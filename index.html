@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Manager Logistique - Cloud (Multi-Users)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; }
+        .container { max-width: 1500px; margin: auto; background: white; padding: 25px; border-radius: 8px; border-top: 6px solid #34495e; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { color: #34495e; margin: 0; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
+        label { font-size: 0.85em; font-weight: bold; display: block; margin-top: 10px; color: #7f8c8d; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.9em; }
+        .btn-settings { background: #34495e; color: white; }
+        .btn-add { background: #34495e; color: white; width: 100%; margin-top: 10px; } 
+        .btn-entry { background: #27ae60; color: white; width: 100%; margin-top: 20px; font-size: 1.1em; padding: 15px; }
+        .btn-entry:hover { background: #219150; }
+        .btn-save-rh { background: #7f8c8d; color: white; width: 100%; margin-top: 10px; }
+        .btn-small-del { background: #c0392b; color: white; font-size: 0.8em; padding: 2px 8px; margin-left: 10px; border-radius: 3px; cursor: pointer; }
+        #paramsSection { display: none; background: #ecf0f1; border-radius: 6px; padding: 20px; margin-bottom: 25px; border: 1px solid #bdc3c7; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; margin-top: 15px; }
+        .card { border: 1px solid #e0e0e0; padding: 20px; border-radius: 6px; background: #fff; }
+        .config-list { max-height: 150px; overflow-y: auto; margin-top: 10px; border: 1px solid #ecf0f1; padding: 5px; background: #fdfdfd; list-style-type: none; margin-left: 0; padding-left: 0; }
+        .config-list li { font-size: 0.85em; padding: 6px; border-bottom: 1px solid #ecf0f1; display: flex; justify-content: space-between; align-items: center; }
+        .prestataire-display { background: #e8f5e9; color: #27ae60; padding: 12px; margin-top: 8px; border-radius: 4px; font-weight: bold; font-size: 0.95em; text-align: center; border: 1px solid #a5d6a7; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 0.9em; }
+        th { background: #34495e; color: white; padding: 12px; border: 1px solid #2c3e50; text-transform: uppercase; }
+        td { border: 1px solid #ddd; padding: 10px; text-align: center; vertical-align: middle; }
+        .col-manut { background-color: #e3f2fd; color: #2c3e50; }
+        .col-agent { background-color: #bbdefb; color: #2c3e50; font-weight: 500; }
+        .col-truck { background-color: #e8f5e9; text-align: left; }
+        .col-truck-cost { background-color: #e8f5e9; font-weight: bold; }
+        .total-cell { font-weight: bold; color: #34495e; background: #ecf0f1; border-left: 2px solid #34495e; }
+        tfoot tr { background-color: #34495e; color: white; font-weight: bold; }
+        
+        /* Indicateur de connexion */
+        #statusIndicator { padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .status-online { background: #27ae60; color: white; }
+        .status-offline { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-row">
+        <div>
+            <h2>📊 Suivi Logistique (Cloud)</h2>
+            <span id="statusIndicator" class="status-offline">Déconnecté</span>
+        </div>
+        <button class="btn btn-settings" onclick="toggleParams()">⚙️ Configurer Données</button>
+    </div>
+
+    <div id="paramsSection">
+        <h3 style="margin-top:0;">🛠️ Configuration Partagée</h3>
+        <p style="font-size:0.9em; color:#e67e22;">⚠️ Attention : Les modifications ici impactent tous les utilisateurs.</p>
+        <div class="grid-3">
+            
+            <div class="card">
+                <h4>1. Tarifs RH</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div>
+                        <strong style="color:#3498db;">Jour</strong>
+                        <label>Manut. :</label> <input type="number" id="tMJ" value="3500">
+                        <label>Agent :</label> <input type="number" id="tAJ" value="7500">
+                    </div>
+                    <div>
+                        <strong style="color:#2980b9;">Nuit</strong>
+                        <label>Manut. :</label> <input type="number" id="tMN" value="5000">
+                        <label>Agent :</label> <input type="number" id="tAN" value="10000">
+                    </div>
+                </div>
+                <button class="btn btn-save-rh" onclick="sauvegarderRH()">💾 Mettre à jour Tarifs</button>
+            </div>
+
+            <div class="card">
+                <h4>2. Routes</h4>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="newRouteName" placeholder="Ville (ex: Bouaké)">
+                    <input type="number" id="newRoutePrice" placeholder="Prix" style="width:100px;">
+                </div>
+                <button class="btn btn-add" onclick="ajouterRoute()">+ Route</button>
+                <ul id="listeRoutesConfig" class="config-list"></ul>
+            </div>
+
+            <div class="card">
+                <h4>3. Base Camions</h4>
+                <label>Nouveau Camion :</label>
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <input type="text" id="newPlate" placeholder="Plaque (1234 AB 01)">
+                    <input type="text" id="newVolume" placeholder="Vol (45m3)" style="width:100px;">
+                </div>
+                <input type="text" id="newProvider" placeholder="Prestataire">
+                
+                <button class="btn btn-add" onclick="ajouterCamionBase()">+ Enregistrer Camion</button>
+                <ul id="listeFlotteConfig" class="config-list"></ul>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card" style="border-left: 5px solid #27ae60; padding: 25px;">
+        <h3 style="color:#27ae60; margin-top:0;">📝 Saisie Journalière</h3>
+        <label style="font-size:1.1em;">Date de l'opération :</label>
+        <input type="date" id="dateSaisie" style="width: 200px; margin-bottom: 20px;">
+        
+        <div class="grid-3">
+            <div class="card" style="border-top: 4px solid #3498db;">
+                <h4 style="margin-top:0; color:#3498db;">🔵 Ressources Humaines</h4>
+                <strong>Shift JOUR</strong>
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="qMJ" placeholder="Manut." value="0"><input type="number" id="qAJ" placeholder="Agent" value="0">
+                </div>
+                <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
+                <strong>Shift NUIT</strong>
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="qMN" placeholder="Manut." value="0"><input type="number" id="qAN" placeholder="Agent" value="0">
+                </div>
+            </div>
+
+            <div class="card" style="background:#f9fff9; border:1px solid #27ae60; border-top: 4px solid #27ae60;">
+                <h4 style="margin-top:0; color:#27ae60;">🟢 Transport</h4>
+                <label>1. Destination :</label>
+                <select id="selectRoute" onchange="afficherPrixRoute()">
+                    <option value="">-- Chargement... --</option>
+                </select>
+                <div id="infoPrixRoute" style="text-align:right; font-size:0.9em; color:#27ae60; font-weight:bold; margin-bottom:10px;">Prix : 0 FCFA</div>
+
+                <label>2. Camion :</label>
+                <input type="text" id="inputMatricule" list="datalistMatricules" placeholder="Taper plaque..." oninput="rechercherInfosCamion()">
+                <datalist id="datalistMatricules"></datalist>
+
+                <div id="displayInfosCamion" class="prestataire-display">Prestataire : - | Volume : -</div>
+                
+                <button class="btn btn-add" style="background:#27ae60;" onclick="ajouterLigneTransport()">Ajouter ce trajet</button>
+
+                <ul id="listeCamionsJour" class="config-list" style="height:auto; min-height:50px;"></ul>
+                <div style="text-align:right; font-weight:bold; margin-top:5px; color:#27ae60;">Total Transport: <span id="totalTransportLive">0</span> FCFA</div>
+            </div>
+        </div>
+        <button class="btn btn-entry" onclick="validerJournee()">✅ Envoyer au Cloud</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th rowspan="2">Date</th>
+                <th colspan="3" style="background:#2980b9;">Manutentionnaires</th>
+                <th colspan="3" style="background:#3498db;">Agents</th>
+                <th colspan="2" style="background:#27ae60;">Transport</th>
+                <th rowspan="2">Total Global</th>
+                <th rowspan="2">Action</th>
+            </tr>
+            <tr>
+                <th class="col-manut">J</th> <th class="col-manut">N</th> <th class="col-manut">Coût</th>
+                <th class="col-agent">J</th> <th class="col-agent">N</th> <th class="col-agent">Coût</th>
+                <th class="col-truck">Axe - Prest. - Plaque - Vol.</th> <th class="col-truck">Coût</th>
+            </tr>
+        </thead>
+        <tbody id="corpsTableau"></tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td id="sMJ">-</td> <td id="sMN">-</td> <td id="sMC">-</td>
+                <td id="sAJ">-</td> <td id="sAN">-</td> <td id="sAC">-</td>
+                <td id="sNbT">-</td> <td id="sTC">-</td>
+                <td id="grandTotal" style="color:#2ecc71;">-</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<script>
+    // --- 1. CONFIGURATION FIREBASE ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzJGbel7mcMHr-sxalOIHagIWIlITHhZk",
+      authDomain: "logistique-tms.firebaseapp.com",
+      projectId: "logistique-tms",
+      storageBucket: "logistique-tms.firebasestorage.app",
+      messagingSenderId: "401352839856",
+      appId: "1:401352839856:web:639ea196aab034c926e175"
+    };
+
+    let db;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        document.getElementById('statusIndicator').innerText = "Connecté au Cloud";
+        document.getElementById('statusIndicator').className = "status-online";
+    } catch (e) {
+        console.error("Erreur Firebase:", e);
+        alert("Attention : Les clés Firebase ne sont pas configurées !");
+    }
+
+    // --- VARIABLES GLOBALES ---
+    let transportTemp = []; 
+    let globalRoutes = [];
+    let globalFlotte = [];
+    let globalRH = {};
+
+    // --- 2. CHARGEMENT TEMPS REEL ---
+    window.onload = function() {
+        if(!db) return;
+
+        // Ecoute de la config (Tarifs, Routes, Flotte)
+        db.collection("config").doc("general").onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                globalRoutes = data.routes || [];
+                globalFlotte = data.flotte || [];
+                globalRH = data.rh || { mJ:3500, aJ:7500, mN:5000, aN:10000 };
+                updateUIConfig();
+            } else {
+                db.collection("config").doc("general").set({ routes:[], flotte:[], rh:{ mJ:3500, aJ:7500, mN:5000, aN:10000 } });
+            }
+        });
+
+        // Ecoute de l'historique
+        db.collection("historique").onSnapshot((querySnapshot) => {
+            afficherHistorique(querySnapshot);
+        });
+    };
+
+    function updateUIConfig() {
+        document.getElementById('tMJ').value = globalRH.mJ; document.getElementById('tAJ').value = globalRH.aJ;
+        document.getElementById('tMN').value = globalRH.mN; document.getElementById('tAN').value = globalRH.aN;
+
+        const listRoutes = document.getElementById('listeRoutesConfig');
+        const selRoute = document.getElementById('selectRoute');
+        listRoutes.innerHTML = "";
+        selRoute.innerHTML = '<option value="">-- Choisir Route --</option>';
+        
+        globalRoutes.forEach((r, idx) => {
+            listRoutes.innerHTML += `<li>${r.name} (${r.price.toLocaleString()} FCFA) <button class="btn-small-del" onclick="delRoute(${idx})">X</button></li>`;
+            let opt = document.createElement('option');
+            opt.value = idx; opt.innerText = r.name; opt.dataset.price = r.price;
+            selRoute.appendChild(opt);
+        });
+
+        const listFlotte = document.getElementById('listeFlotteConfig');
+        const dl = document.getElementById('datalistMatricules');
+        listFlotte.innerHTML = "";
+        dl.innerHTML = "";
+
+        globalFlotte.forEach((c, idx) => {
+            listFlotte.innerHTML += `<li><b>${c.mat}</b> (${c.vol}) - ${c.prest} <button class="btn-small-del" onclick="delFlotte(${idx})">X</button></li>`;
+            let opt = document.createElement('option');
+            opt.value = c.mat;
+            dl.appendChild(opt);
+        });
+    }
+
+    // --- 3. SAUVEGARDE CONFIGURATION ---
+    function saveConfigToCloud() {
+        db.collection("config").doc("general").update({
+            routes: globalRoutes,
+            flotte: globalFlotte,
+            rh: globalRH
+        }).then(() => {
+            console.log("Config synchronisée !");
+        }).catch((err) => alert("Erreur sauvegarde : " + err));
+    }
+
+    function sauvegarderRH() {
+        globalRH = {
+            mJ: Number(document.getElementById('tMJ').value), aJ: Number(document.getElementById('tAJ').value),
+            mN: Number(document.getElementById('tMN').value), aN: Number(document.getElementById('tAN').value)
+        };
+        saveConfigToCloud();
+        alert("Tarifs RH mis à jour pour tout le monde !");
+    }
+
+    function ajouterRoute() {
+        const n = document.getElementById('newRouteName').value;
+        const p = document.getElementById('newRoutePrice').value;
+        if(!n || !p) return alert("Remplissez la route et le prix.");
+        globalRoutes.push({ name: n, price: Number(p) });
+        saveConfigToCloud();
+        document.getElementById('newRouteName').value = ""; document.getElementById('newRoutePrice').value = "";
+    }
+    
+    function delRoute(idx) {
+        if(confirm("Supprimer cette route ?")) {
+            globalRoutes.splice(idx, 1);
+            saveConfigToCloud();
+        }
+    }
+
+    function ajouterCamionBase() {
+        const mat = document.getElementById('newPlate').value.toUpperCase();
+        const vol = document.getElementById('newVolume').value;
+        const prest = document.getElementById('newProvider').value;
+        if(!mat || !prest || !vol) return alert("Remplissez tous les champs du camion.");
+        
+        if(globalFlotte.find(c => c.mat === mat)) return alert("Ce camion existe déjà !");
+        
+        globalFlotte.push({ mat: mat, prest: prest, vol: vol });
+        saveConfigToCloud();
+        document.getElementById('newPlate').value=""; document.getElementById('newVolume').value=""; document.getElementById('newProvider').value="";
+    }
+
+    function delFlotte(idx) {
+        if(confirm("Supprimer ce camion de la base ?")) {
+            globalFlotte.splice(idx, 1);
+            saveConfigToCloud();
+        }
+    }
+
+    function toggleParams() {
+        const x = document.getElementById("paramsSection");
+        x.style.display = (x.style.display === "none") ? "block" : "none";
+    }
+
+    // --- 4. GESTION DU TRANSPORT JOURNALIER ---
+    function afficherPrixRoute() {
+        const sel = document.getElementById('selectRoute');
+        if(sel.selectedIndex <= 0) {
+            document.getElementById('infoPrixRoute').innerText = `Prix : 0 FCFA`;
+            return;
+        }
+        const p = sel.options[sel.selectedIndex].dataset.price;
+        document.getElementById('infoPrixRoute').innerText = `Prix : ${Number(p).toLocaleString()} FCFA`;
+    }
+
+    function rechercherInfosCamion() {
+        const input = document.getElementById('inputMatricule').value.toUpperCase();
+        const display = document.getElementById('displayInfosCamion');
+        const camion = globalFlotte.find(c => c.mat === input);
+        if(camion) {
+            display.innerText = `${camion.prest} | Vol: ${camion.vol}`;
+            display.style.backgroundColor = "#c8e6c9"; display.style.color = "#2e7d32";
+        } else {
+            display.innerText = "Inconnu (Saisie manuelle)";
+            display.style.backgroundColor = "#fff9c4"; display.style.color = "#f57f17";
+        }
+    }
+
+    function ajouterLigneTransport() {
+        const sel = document.getElementById('selectRoute');
+        if(sel.value === "") return alert("Choisis d'abord une route !");
+        
+        const routeName = sel.options[sel.selectedIndex].innerText;
+        const price = Number(sel.options[sel.selectedIndex].dataset.price);
+        const mat = document.getElementById('inputMatricule').value.toUpperCase();
+        
+        if(!mat) return alert("Renseignez la plaque d'immatriculation du camion.");
+
+        let found = globalFlotte.find(c => c.mat === mat);
+        let prest = found ? found.prest : "Non enregistré";
+        let vol = found ? found.vol : "?";
+
+        transportTemp.push({ route: routeName, price: price, mat: mat, prest: prest, vol: vol });
+        updateTransportTempUI();
+        
+        document.getElementById('inputMatricule').value = "";
+        document.getElementById('displayInfosCamion').innerText = "Prestataire : - | Volume : -";
+        document.getElementById('displayInfosCamion').style.backgroundColor = "#e8f5e9";
+    }
+
+    function updateTransportTempUI() {
+        const ul = document.getElementById('listeCamionsJour');
+        const totalSpan = document.getElementById('totalTransportLive');
+        ul.innerHTML = "";
+        let tot = 0;
+        transportTemp.forEach((t, idx) => {
+            tot += t.price;
+            ul.innerHTML += `<li><span style="font-size:0.9em"><b>${t.route}</b> - ${t.mat} <br><i style="color:#666">${t.prest} (${t.vol})</i></span><span>${t.price.toLocaleString()} FCFA <button class="btn-small-del" onclick="delTranspTemp(${idx})">X</button></span></li>`;
+        });
+        totalSpan.innerText = tot.toLocaleString();
+    }
+
+    function delTranspTemp(idx) {
+        transportTemp.splice(idx, 1);
+        updateTransportTempUI();
+    }
+
+    // --- 5. VALIDATION ET ENVOI ---
+    function validerJournee() {
+        const date = document.getElementById('dateSaisie').value;
+        if(!date) return alert("Date manquante ! Veuillez choisir une date.");
+
+        // Calcul RH
+        const qrh = { 
+            mJ: Number(document.getElementById('qMJ').value), 
+            aJ: Number(document.getElementById('qAJ').value), 
+            mN: Number(document.getElementById('qMN').value), 
+            aN: Number(document.getElementById('qAN').value) 
+        };
+        const rhCost = (qrh.mJ * globalRH.mJ) + (qrh.mN * globalRH.mN) + (qrh.aJ * globalRH.aJ) + (qrh.aN * globalRH.aN);
+        
+        // Calcul Transport
+        let tCost = 0; 
+        transportTemp.forEach(t => tCost += t.price);
+
+        const record = {
+            date: date,
+            rh: { q: qrh, cost: rhCost },
+            transport: { list: transportTemp, cost: tCost },
+            total: rhCost + tCost,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        db.collection("historique").doc(date).set(record)
+            .then(() => {
+                alert("✅ Données envoyées au Cloud avec succès !");
+                transportTemp = []; 
+                updateTransportTempUI();
+                document.getElementById('qMJ').value = 0; document.getElementById('qAJ').value = 0;
+                document.getElementById('qMN').value = 0; document.getElementById('qAN').value = 0;
+            })
+            .catch((err) => alert("Erreur lors de l'envoi : " + err));
+    }
+
+    // --- 6. AFFICHAGE TABLEAU ---
+    function afficherHistorique(snapshot) {
+        const tbody = document.getElementById('corpsTableau');
+        tbody.innerHTML = "";
+        let s = { mj:0, mn:0, mc:0, aj:0, an:0, ac:0, nbT:0, tc:0, g:0 };
+
+        let docs = [];
+        snapshot.forEach(doc => docs.push(doc.data()));
+        docs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        docs.forEach(d => {
+            s.mj += d.rh.q.mJ; s.mn += d.rh.q.mN; s.mc += d.rh.cost;
+            s.aj += d.rh.q.aJ; s.an += d.rh.q.aN;
+            
+            let transportDetails = "";
+            d.transport.list.forEach(t => {
+                let v = t.vol ? t.vol : ""; 
+                transportDetails += `<div style="border-bottom:1px solid #ccc; padding:3px 0;"><strong>${t.route}</strong> - ${t.prest} - <b>${t.mat}</b> <span style="background:#fff; border:1px solid #aaa; padding:0 3px; border-radius:3px; font-size:0.85em;">${v}</span></div>`;
+            });
+
+            s.nbT += d.transport.list.length; s.tc += d.transport.cost; s.g += d.total;
+
+            tbody.innerHTML += `<tr>
+                <td><strong>${d.date}</strong></td>
+                <td class="col-manut">${d.rh.q.mJ}</td> <td class="col-manut">${d.rh.q.mN}</td> <td class="col-manut">${d.rh.cost.toLocaleString()} FCFA</td>
+                <td class="col-agent">${d.rh.q.aJ}</td> <td class="col-agent">${d.rh.q.aN}</td> <td class="col-agent"><b>${d.rh.cost.toLocaleString()} FCFA</b></td>
+                <td class="col-truck">${transportDetails}</td> <td class="col-truck-cost">${d.transport.cost.toLocaleString()} FCFA</td>
+                <td class="total-cell">${d.total.toLocaleString()} FCFA</td>
+                <td><button class="btn-small-del" onclick="delHist('${d.date}')">X</button></td>
+            </tr>`;
+        });
+
+        // Mise à jour des totaux (Footer)
+        document.getElementById('sMJ').innerText = s.mj; document.getElementById('sMN').innerText = s.mn;
+        document.getElementById('sAJ').innerText = s.aj; document.getElementById('sAN').innerText = s.an; 
+        document.getElementById('sAC').innerText = s.mc.toLocaleString() + " FCFA";
+        document.getElementById('sNbT').innerText = s.nbT + " trajets";
+        document.getElementById('sTC').innerText = s.tc.toLocaleString() + " FCFA";
+        document.getElementById('grandTotal').innerText = s.g.toLocaleString() + " FCFA";
+    }
+
+    function delHist(dateId) {
+        if(confirm("⚠️ Voulez-vous supprimer définitivement la journée du " + dateId + " pour TOUS les utilisateurs ?")) {
+            db.collection("historique").doc(dateId).delete();
+        }
+    }
+</script>
+</body>
+</html>
