@@ -5,19 +5,20 @@
     <title>Manager Logistique - Cloud (Multi-Users)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; }
-        .container { max-width: 1500px; margin: auto; background: white; padding: 25px; border-radius: 8px; border-top: 6px solid #34495e; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; margin: 0; }
+        .container { max-width: 1500px; margin: auto; background: white; padding: 25px; border-radius: 8px; border-top: 6px solid #f68b1e; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        h2 { color: #34495e; margin: 0; }
+        h2 { color: #282828; margin: 0; font-weight: 800; }
         input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
         label { font-size: 0.85em; font-weight: bold; display: block; margin-top: 10px; color: #7f8c8d; }
         .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.9em; }
-        .btn-settings { background: #34495e; color: white; }
-        .btn-add { background: #34495e; color: white; width: 100%; margin-top: 10px; } 
-        .btn-entry { background: #27ae60; color: white; width: 100%; margin-top: 20px; font-size: 1.1em; padding: 15px; }
-        .btn-entry:hover { background: #219150; }
+        .btn-settings { background: #282828; color: white; }
+        .btn-add { background: #282828; color: white; width: 100%; margin-top: 10px; } 
+        .btn-entry { background: #f68b1e; color: white; width: 100%; margin-top: 20px; font-size: 1.1em; padding: 15px; }
+        .btn-entry:hover { background: #e07b19; }
         .btn-save-rh { background: #7f8c8d; color: white; width: 100%; margin-top: 10px; }
         .btn-small-del { background: #c0392b; color: white; font-size: 0.8em; padding: 2px 8px; margin-left: 10px; border-radius: 3px; cursor: pointer; }
         #paramsSection { display: none; background: #ecf0f1; border-radius: 6px; padding: 20px; margin-bottom: 25px; border: 1px solid #bdc3c7; }
@@ -28,135 +29,132 @@
         .prestataire-display { background: #e8f5e9; color: #27ae60; padding: 12px; margin-top: 8px; border-radius: 4px; font-weight: bold; font-size: 0.95em; text-align: center; border: 1px solid #a5d6a7; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 0.9em; }
-        th { background: #34495e; color: white; padding: 12px; border: 1px solid #2c3e50; text-transform: uppercase; }
+        th { background: #282828; color: white; padding: 12px; border: 1px solid #444; text-transform: uppercase; }
         td { border: 1px solid #ddd; padding: 10px; text-align: center; vertical-align: middle; }
-        .col-manut { background-color: #e3f2fd; color: #2c3e50; }
-        .col-agent { background-color: #bbdefb; color: #2c3e50; font-weight: 500; }
-        .col-truck { background-color: #e8f5e9; text-align: left; }
-        .col-truck-cost { background-color: #e8f5e9; font-weight: bold; }
-        .total-cell { font-weight: bold; color: #34495e; background: #ecf0f1; border-left: 2px solid #34495e; }
-        tfoot tr { background-color: #34495e; color: white; font-weight: bold; }
+        .col-manut { background-color: #fcf3e8; color: #282828; }
+        .col-agent { background-color: #e6f7ff; color: #282828; font-weight: 500; }
+        .col-truck { background-color: #f0f0f0; text-align: left; }
+        .col-truck-cost { background-color: #f0f0f0; font-weight: bold; }
+        .total-cell { font-weight: bold; color: #f68b1e; background: #282828; border-left: 2px solid #282828; }
+        tfoot tr { background-color: #282828; color: white; font-weight: bold; }
         
-        /* Indicateur de connexion */
         #statusIndicator { padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
         .status-online { background: #27ae60; color: white; }
         .status-offline { background: #e74c3c; color: white; }
 
-        /* Dashboard Analyse Modifié (Flex Column) */
-        .dashboard-analyse { display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 6px solid #f39c12; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-        .dash-item { text-align: center; }
-        .dash-item h4 { margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
-        .dash-item p { margin: 0; font-size: 2em; font-weight: bold; color: #2c3e50; }
-        .dash-item.highlight p { color: #f39c12; }
+        /* NOUVEAU DESIGN JUMIA (Orange, Noir, Bleu Ciel) */
+        .dashboard-analyse { display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 6px solid #f68b1e; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .dash-row { display: flex; justify-content: space-around; width: 100%; gap: 15px; }
+        .dash-item { flex: 1; text-align: center; padding: 15px; border-radius: 8px; background: #f9f9f9; border: 1px solid #eee; }
+        .dash-item h4 { margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
+        .dash-item p { margin: 0; font-size: 2.2em; font-weight: 900; color: #282828; }
+        
+        .dash-black { background: #282828; color: white; border: none; }
+        .dash-black h4 { color: #aaa; }
+        .dash-black p { color: #f68b1e; }
+
+        .dash-blue { background: #00b5e2; color: white; border: none; }
+        .dash-blue h4 { color: #e6f7ff; }
+        .dash-blue p { color: #fff; }
+        
+        .dash-orange { background: #f68b1e; color: white; border: none; }
+        .dash-orange h4 { color: #ffe6cc; }
+        .dash-orange p { color: #fff; }
+
+        /* Footer Jumia */
+        footer { text-align: center; padding: 30px; margin-top: 40px; background: #fff; border-top: 3px solid #eee; border-radius: 0 0 8px 8px;}
+        footer img { height: 50px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-row">
-        <div>
-            <h2>📊 Suivi Logistique (Cloud)</h2>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Jumia_logo.svg/512px-Jumia_logo.svg.png" alt="Jumia" style="height: 35px;">
+            <h2>Suivi Logistique</h2>
             <span id="statusIndicator" class="status-offline">Déconnecté</span>
         </div>
-        <button class="btn btn-settings" onclick="toggleParams()">⚙️ Configurer Données</button>
+        <button class="btn btn-settings" onclick="toggleParams()"⚙️ Configurer Données</button>
     </div>
 
     <div id="paramsSection">
         <h3 style="margin-top:0;">🛠️ Configuration Partagée</h3>
-        <p style="font-size:0.9em; color:#e67e22;">⚠️ Attention : Les modifications ici impactent tous les utilisateurs.</p>
         <div class="grid-3">
-            
             <div class="card">
                 <h4>1. Tarifs RH</h4>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div>
-                        <strong style="color:#3498db;">Jour</strong>
-                        <label>Manut. :</label> <input type="number" id="tMJ" value="3500">
-                        <label>Agent :</label> <input type="number" id="tAJ" value="7500">
-                    </div>
-                    <div>
-                        <strong style="color:#2980b9;">Nuit</strong>
-                        <label>Manut. :</label> <input type="number" id="tMN" value="5000">
-                        <label>Agent :</label> <input type="number" id="tAN" value="10000">
-                    </div>
+                    <div><strong style="color:#00b5e2;">Jour</strong><br><label>Manut.:</label><input type="number" id="tMJ" value="3500"><label>Agent:</label><input type="number" id="tAJ" value="7500"></div>
+                    <div><strong style="color:#282828;">Nuit</strong><br><label>Manut.:</label><input type="number" id="tMN" value="5000"><label>Agent:</label><input type="number" id="tAN" value="10000"></div>
                 </div>
-                <button class="btn btn-save-rh" onclick="sauvegarderRH()">💾 Mettre à jour Tarifs</button>
+                <button class="btn btn-save-rh" onclick="sauvegarderRH()">💾 Mettre à jour</button>
             </div>
-
             <div class="card">
                 <h4>2. Routes</h4>
-                <div style="display:flex; gap:5px;">
-                    <input type="text" id="newRouteName" placeholder="Ville (ex: Bouaké)">
-                    <input type="number" id="newRoutePrice" placeholder="Prix" style="width:100px;">
-                </div>
+                <div style="display:flex; gap:5px;"><input type="text" id="newRouteName" placeholder="Ville"><input type="number" id="newRoutePrice" placeholder="Prix" style="width:100px;"></div>
                 <button class="btn btn-add" onclick="ajouterRoute()">+ Route</button>
                 <ul id="listeRoutesConfig" class="config-list"></ul>
             </div>
-
             <div class="card">
                 <h4>3. Base Camions</h4>
-                <label>Nouveau Camion :</label>
-                <div style="display:flex; gap:5px; margin-bottom:5px;">
-                    <input type="text" id="newPlate" placeholder="Plaque (1234 AB 01)">
-                    <input type="text" id="newVolume" placeholder="Vol (45m3)" style="width:100px;">
-                </div>
+                <div style="display:flex; gap:5px; margin-bottom:5px;"><input type="text" id="newPlate" placeholder="Plaque"><input type="text" id="newVolume" placeholder="Vol" style="width:100px;"></div>
                 <input type="text" id="newProvider" placeholder="Prestataire">
-                
-                <button class="btn btn-add" onclick="ajouterCamionBase()">+ Enregistrer Camion</button>
+                <button class="btn btn-add" onclick="ajouterCamionBase()">+ Camion</button>
                 <ul id="listeFlotteConfig" class="config-list"></ul>
             </div>
-
         </div>
     </div>
 
     <div class="dashboard-analyse">
-        <div style="display: flex; justify-content: space-around; width: 100%;">
+        <div class="dash-row">
             <div class="dash-item">
-                <h4>Effectif Staffé (Global)</h4>
+                <h4>Effectif (Global)</h4>
                 <p id="dashTotalEffectif">0</p>
             </div>
             <div class="dash-item">
-                <h4>Camions Traités (Global)</h4>
+                <h4>Camions (Global)</h4>
                 <p id="dashTotalCamions">0</p>
             </div>
-            <div class="dash-item highlight">
+            <div class="dash-item dash-black">
                 <h4>📈 Productivité Globale</h4>
-                <p id="dashProductivite">0.00 <span style="font-size:0.4em; color:#7f8c8d;">Camions / Agent</span></p>
+                <p id="dashProductivite">0.00 <span style="font-size:0.4em; color:#aaa;">Camions/Agent</span></p>
             </div>
-        </div>
-
-        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #e0e0e0;">
-            <h4 style="margin: 0 0 10px 0; color: #7f8c8d; font-size: 0.85em; text-transform: uppercase;">Évolution de la Productivité (7 Derniers Jours)</h4>
-            <div id="weeklyProdBreakdown" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 5px;">
-                </div>
+            <div class="dash-item dash-blue">
+                <h4>🗓️ Productivité du Mois</h4>
+                <p id="dashProdMois">0.00 <span style="font-size:0.4em; color:#e6f7ff;">Camions/Agent</span></p>
+            </div>
         </div>
     </div>
 
     <div class="card" style="border-left: 5px solid #27ae60; padding: 25px;">
-        <h3 style="color:#27ae60; margin-top:0;">📝 Saisie Journalière</h3>
-        <label style="font-size:1.1em;">Date de l'opération :</label>
-        <input type="date" id="dateSaisie" style="width: 200px; margin-bottom: 20px;">
+        <h3 style="color:#27ae60; margin-top:0;">📝 Saisie Journalière & Analyse</h3>
+        
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-bottom: 25px;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-size:1.1em; color: #282828;">Date de l'opération :</label>
+                <input type="date" id="dateSaisie" style="width: 100%; margin-top: 10px; border: 2px solid #00b5e2; padding: 12px; font-weight: bold;">
+            </div>
+            
+            <div style="flex: 3; min-width: 400px; height: 180px; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #ddd; position: relative;">
+                <span style="position: absolute; top: 10px; left: 15px; font-size: 0.8em; font-weight: bold; color: #7f8c8d; text-transform: uppercase;">Évolution du mois (Productivité)</span>
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
         
         <div class="grid-3">
-            <div class="card" style="border-top: 4px solid #3498db;">
-                <h4 style="margin-top:0; color:#3498db;">🔵 Ressources Humaines</h4>
+            <div class="card" style="border-top: 4px solid #00b5e2;">
+                <h4 style="margin-top:0; color:#00b5e2;">🔵 Ressources Humaines</h4>
                 <strong>Shift JOUR</strong>
-                <div style="display:flex; gap:10px;">
-                    <input type="number" id="qMJ" placeholder="Manut." value="0"><input type="number" id="qAJ" placeholder="Agent" value="0">
-                </div>
+                <div style="display:flex; gap:10px;"><input type="number" id="qMJ" placeholder="Manut." value="0"><input type="number" id="qAJ" placeholder="Agent" value="0"></div>
                 <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
                 <strong>Shift NUIT</strong>
-                <div style="display:flex; gap:10px;">
-                    <input type="number" id="qMN" placeholder="Manut." value="0"><input type="number" id="qAN" placeholder="Agent" value="0">
-                </div>
+                <div style="display:flex; gap:10px;"><input type="number" id="qMN" placeholder="Manut." value="0"><input type="number" id="qAN" placeholder="Agent" value="0"></div>
             </div>
 
             <div class="card" style="background:#f9fff9; border:1px solid #27ae60; border-top: 4px solid #27ae60;">
                 <h4 style="margin-top:0; color:#27ae60;">🟢 Transport</h4>
                 <label>1. Destination :</label>
-                <select id="selectRoute" onchange="afficherPrixRoute()">
-                    <option value="">-- Chargement... --</option>
-                </select>
+                <select id="selectRoute" onchange="afficherPrixRoute()"><option value="">-- Chargement... --</option></select>
                 <div id="infoPrixRoute" style="text-align:right; font-size:0.9em; color:#27ae60; font-weight:bold; margin-bottom:10px;">Prix : 0 FCFA</div>
 
                 <label>2. Camion :</label>
@@ -164,23 +162,21 @@
                 <datalist id="datalistMatricules"></datalist>
 
                 <div id="displayInfosCamion" class="prestataire-display">Prestataire : - | Volume : -</div>
-                
                 <button class="btn btn-add" style="background:#27ae60;" onclick="ajouterLigneTransport()">Ajouter ce trajet</button>
-
                 <ul id="listeCamionsJour" class="config-list" style="height:auto; min-height:50px;"></ul>
                 <div style="text-align:right; font-weight:bold; margin-top:5px; color:#27ae60;">Total Transport: <span id="totalTransportLive">0</span> FCFA</div>
             </div>
         </div>
-        <button class="btn btn-entry" onclick="validerJournee()">✅ Envoyer au Cloud</button>
+        <button class="btn btn-entry" onclick="validerJournee()">✅ Enregistrer la Journée</button>
     </div>
 
     <table>
         <thead>
             <tr>
                 <th rowspan="2">Date</th>
-                <th colspan="3" style="background:#2980b9;">Manutentionnaires</th>
-                <th colspan="3" style="background:#3498db;">Agents</th>
-                <th colspan="2" style="background:#27ae60;">Transport</th>
+                <th colspan="3" style="background:#282828;">Manutentionnaires</th>
+                <th colspan="3" style="background:#00b5e2;">Agents</th>
+                <th colspan="2" style="background:#f68b1e;">Transport</th>
                 <th rowspan="2">Total Global</th>
                 <th rowspan="2">Action</th>
             </tr>
@@ -197,15 +193,20 @@
                 <td id="sMJ">-</td> <td id="sMN">-</td> <td id="sMC">-</td>
                 <td id="sAJ">-</td> <td id="sAN">-</td> <td id="sAC">-</td>
                 <td id="sNbT">-</td> <td id="sTC">-</td>
-                <td id="grandTotal" style="color:#2ecc71;">-</td>
+                <td id="grandTotal" style="color:#f68b1e;">-</td>
                 <td></td>
             </tr>
         </tfoot>
     </table>
+    
+    <footer>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Jumia_logo.svg/512px-Jumia_logo.svg.png" alt="Jumia Logo">
+        <p style="margin: 0; color: #7f8c8d; font-size: 0.9em;"><strong>Transport Management System (TMS)</strong><br>© 2026 Jumia Logistics. Tous droits réservés.</p>
+    </footer>
 </div>
 
 <script>
-    // --- 1. CONFIGURATION FIREBASE ---
+   // --- 1. CONFIGURATION FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzJGbel7mcMHr-sxalOIHagIWIlITHhZk",
       authDomain: "logistique-tms.firebaseapp.com",
@@ -216,6 +217,8 @@
     };
 
     let db;
+    let prodChart = null; // Variable pour stocker la courbe graphique
+
     try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
@@ -223,33 +226,25 @@
         document.getElementById('statusIndicator').className = "status-online";
     } catch (e) {
         console.error("Erreur Firebase:", e);
-        alert("Attention : Les clés Firebase ne sont pas configurées !");
     }
 
-    // --- VARIABLES GLOBALES ---
     let transportTemp = []; 
     let globalRoutes = [];
     let globalFlotte = [];
     let globalRH = {};
 
-    // --- 2. CHARGEMENT TEMPS REEL ---
     window.onload = function() {
         if(!db) return;
+        document.getElementById('dateSaisie').valueAsDate = new Date();
 
-        // Ecoute de la config (Tarifs, Routes, Flotte)
         db.collection("config").doc("general").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                globalRoutes = data.routes || [];
-                globalFlotte = data.flotte || [];
-                globalRH = data.rh || { mJ:3500, aJ:7500, mN:5000, aN:10000 };
+                globalRoutes = data.routes || []; globalFlotte = data.flotte || []; globalRH = data.rh || { mJ:3500, aJ:7500, mN:5000, aN:10000 };
                 updateUIConfig();
-            } else {
-                db.collection("config").doc("general").set({ routes:[], flotte:[], rh:{ mJ:3500, aJ:7500, mN:5000, aN:10000 } });
             }
         });
 
-        // Ecoute de l'historique
         db.collection("historique").onSnapshot((querySnapshot) => {
             afficherHistorique(querySnapshot);
         });
@@ -261,285 +256,169 @@
 
         const listRoutes = document.getElementById('listeRoutesConfig');
         const selRoute = document.getElementById('selectRoute');
-        listRoutes.innerHTML = "";
-        selRoute.innerHTML = '<option value="">-- Choisir Route --</option>';
-        
+        listRoutes.innerHTML = ""; selRoute.innerHTML = '<option value="">-- Choisir Route --</option>';
         globalRoutes.forEach((r, idx) => {
             listRoutes.innerHTML += `<li>${r.name} (${r.price.toLocaleString()} FCFA) <button class="btn-small-del" onclick="delRoute(${idx})">X</button></li>`;
-            let opt = document.createElement('option');
-            opt.value = idx; opt.innerText = r.name; opt.dataset.price = r.price;
-            selRoute.appendChild(opt);
+            let opt = document.createElement('option'); opt.value = idx; opt.innerText = r.name; opt.dataset.price = r.price; selRoute.appendChild(opt);
         });
 
         const listFlotte = document.getElementById('listeFlotteConfig');
         const dl = document.getElementById('datalistMatricules');
-        listFlotte.innerHTML = "";
-        dl.innerHTML = "";
-
+        listFlotte.innerHTML = ""; dl.innerHTML = "";
         globalFlotte.forEach((c, idx) => {
             listFlotte.innerHTML += `<li><b>${c.mat}</b> (${c.vol}) - ${c.prest} <button class="btn-small-del" onclick="delFlotte(${idx})">X</button></li>`;
-            let opt = document.createElement('option');
-            opt.value = c.mat;
-            dl.appendChild(opt);
+            let opt = document.createElement('option'); opt.value = c.mat; dl.appendChild(opt);
         });
     }
 
-    // --- 3. SAUVEGARDE CONFIGURATION ---
-    function saveConfigToCloud() {
-        db.collection("config").doc("general").update({
-            routes: globalRoutes,
-            flotte: globalFlotte,
-            rh: globalRH
-        }).then(() => {
-            console.log("Config synchronisée !");
-        }).catch((err) => alert("Erreur sauvegarde : " + err));
-    }
+    function saveConfigToCloud() { db.collection("config").doc("general").update({ routes: globalRoutes, flotte: globalFlotte, rh: globalRH }); }
+    function sauvegarderRH() { globalRH = { mJ: Number(document.getElementById('tMJ').value), aJ: Number(document.getElementById('tAJ').value), mN: Number(document.getElementById('tMN').value), aN: Number(document.getElementById('tAN').value) }; saveConfigToCloud(); alert("Tarifs mis à jour !"); }
+    function ajouterRoute() { const n = document.getElementById('newRouteName').value; const p = document.getElementById('newRoutePrice').value; if(n && p){ globalRoutes.push({ name: n, price: Number(p) }); saveConfigToCloud(); document.getElementById('newRouteName').value = ""; document.getElementById('newRoutePrice').value = ""; } }
+    function delRoute(idx) { if(confirm("Supprimer ?")) { globalRoutes.splice(idx, 1); saveConfigToCloud(); } }
+    function ajouterCamionBase() { const mat = document.getElementById('newPlate').value.toUpperCase(); const vol = document.getElementById('newVolume').value; const prest = document.getElementById('newProvider').value; if(mat && prest && vol) { globalFlotte.push({ mat: mat, prest: prest, vol: vol }); saveConfigToCloud(); document.getElementById('newPlate').value=""; document.getElementById('newVolume').value=""; document.getElementById('newProvider').value=""; } }
+    function delFlotte(idx) { if(confirm("Supprimer ?")) { globalFlotte.splice(idx, 1); saveConfigToCloud(); } }
+    function toggleParams() { const x = document.getElementById("paramsSection"); x.style.display = (x.style.display === "none") ? "block" : "none"; }
 
-    function sauvegarderRH() {
-        globalRH = {
-            mJ: Number(document.getElementById('tMJ').value), aJ: Number(document.getElementById('tAJ').value),
-            mN: Number(document.getElementById('tMN').value), aN: Number(document.getElementById('tAN').value)
-        };
-        saveConfigToCloud();
-        alert("Tarifs RH mis à jour pour tout le monde !");
-    }
-
-    function ajouterRoute() {
-        const n = document.getElementById('newRouteName').value;
-        const p = document.getElementById('newRoutePrice').value;
-        if(!n || !p) return alert("Remplissez la route et le prix.");
-        globalRoutes.push({ name: n, price: Number(p) });
-        saveConfigToCloud();
-        document.getElementById('newRouteName').value = ""; document.getElementById('newRoutePrice').value = "";
-    }
-    
-    function delRoute(idx) {
-        if(confirm("Supprimer cette route ?")) {
-            globalRoutes.splice(idx, 1);
-            saveConfigToCloud();
-        }
-    }
-
-    function ajouterCamionBase() {
-        const mat = document.getElementById('newPlate').value.toUpperCase();
-        const vol = document.getElementById('newVolume').value;
-        const prest = document.getElementById('newProvider').value;
-        if(!mat || !prest || !vol) return alert("Remplissez tous les champs du camion.");
-        
-        if(globalFlotte.find(c => c.mat === mat)) return alert("Ce camion existe déjà !");
-        
-        globalFlotte.push({ mat: mat, prest: prest, vol: vol });
-        saveConfigToCloud();
-        document.getElementById('newPlate').value=""; document.getElementById('newVolume').value=""; document.getElementById('newProvider').value="";
-    }
-
-    function delFlotte(idx) {
-        if(confirm("Supprimer ce camion de la base ?")) {
-            globalFlotte.splice(idx, 1);
-            saveConfigToCloud();
-        }
-    }
-
-    function toggleParams() {
-        const x = document.getElementById("paramsSection");
-        x.style.display = (x.style.display === "none") ? "block" : "none";
-    }
-
-    // --- 4. GESTION DU TRANSPORT JOURNALIER ---
-    function afficherPrixRoute() {
-        const sel = document.getElementById('selectRoute');
-        if(sel.selectedIndex <= 0) {
-            document.getElementById('infoPrixRoute').innerText = `Prix : 0 FCFA`;
-            return;
-        }
-        const p = sel.options[sel.selectedIndex].dataset.price;
-        document.getElementById('infoPrixRoute').innerText = `Prix : ${Number(p).toLocaleString()} FCFA`;
-    }
-
-    function rechercherInfosCamion() {
-        const input = document.getElementById('inputMatricule').value.toUpperCase();
-        const display = document.getElementById('displayInfosCamion');
-        const camion = globalFlotte.find(c => c.mat === input);
-        if(camion) {
-            display.innerText = `${camion.prest} | Vol: ${camion.vol}`;
-            display.style.backgroundColor = "#c8e6c9"; display.style.color = "#2e7d32";
-        } else {
-            display.innerText = "Inconnu (Saisie manuelle)";
-            display.style.backgroundColor = "#fff9c4"; display.style.color = "#f57f17";
-        }
-    }
-
+    function afficherPrixRoute() { const sel = document.getElementById('selectRoute'); if(sel.selectedIndex <= 0) { document.getElementById('infoPrixRoute').innerText = `Prix : 0 FCFA`; return; } document.getElementById('infoPrixRoute').innerText = `Prix : ${Number(sel.options[sel.selectedIndex].dataset.price).toLocaleString()} FCFA`; }
+    function rechercherInfosCamion() { const input = document.getElementById('inputMatricule').value.toUpperCase(); const display = document.getElementById('displayInfosCamion'); const c = globalFlotte.find(x => x.mat === input); if(c) { display.innerText = `${c.prest} | Vol: ${c.vol}`; display.style.backgroundColor = "#c8e6c9"; display.style.color = "#2e7d32"; } else { display.innerText = "Inconnu"; display.style.backgroundColor = "#fff9c4"; display.style.color = "#f57f17"; } }
     function ajouterLigneTransport() {
-        const sel = document.getElementById('selectRoute');
-        if(sel.value === "") return alert("Choisis d'abord une route !");
-        
-        const routeName = sel.options[sel.selectedIndex].innerText;
-        const price = Number(sel.options[sel.selectedIndex].dataset.price);
-        const mat = document.getElementById('inputMatricule').value.toUpperCase();
-        
-        if(!mat) return alert("Renseignez la plaque d'immatriculation du camion.");
-
-        let found = globalFlotte.find(c => c.mat === mat);
-        let prest = found ? found.prest : "Non enregistré";
-        let vol = found ? found.vol : "?";
-
-        transportTemp.push({ route: routeName, price: price, mat: mat, prest: prest, vol: vol });
-        updateTransportTempUI();
-        
-        document.getElementById('inputMatricule').value = "";
-        document.getElementById('displayInfosCamion').innerText = "Prestataire : - | Volume : -";
-        document.getElementById('displayInfosCamion').style.backgroundColor = "#e8f5e9";
+        const sel = document.getElementById('selectRoute'); if(sel.value === "") return;
+        const mat = document.getElementById('inputMatricule').value.toUpperCase(); if(!mat) return;
+        let c = globalFlotte.find(x => x.mat === mat);
+        transportTemp.push({ route: sel.options[sel.selectedIndex].innerText, price: Number(sel.options[sel.selectedIndex].dataset.price), mat: mat, prest: c ? c.prest : "?", vol: c ? c.vol : "?" });
+        updateTransportTempUI(); document.getElementById('inputMatricule').value = ""; document.getElementById('displayInfosCamion').innerText = "-";
     }
-
     function updateTransportTempUI() {
-        const ul = document.getElementById('listeCamionsJour');
-        const totalSpan = document.getElementById('totalTransportLive');
-        ul.innerHTML = "";
-        let tot = 0;
-        transportTemp.forEach((t, idx) => {
-            tot += t.price;
-            ul.innerHTML += `<li><span style="font-size:0.9em"><b>${t.route}</b> - ${t.mat} <br><i style="color:#666">${t.prest} (${t.vol})</i></span><span>${t.price.toLocaleString()} FCFA <button class="btn-small-del" onclick="delTranspTemp(${idx})">X</button></span></li>`;
-        });
-        totalSpan.innerText = tot.toLocaleString();
+        const ul = document.getElementById('listeCamionsJour'); const ts = document.getElementById('totalTransportLive'); ul.innerHTML = ""; let tot = 0;
+        transportTemp.forEach((t, idx) => { tot += t.price; ul.innerHTML += `<li><span style="font-size:0.9em"><b>${t.route}</b> - ${t.mat}</span><span>${t.price.toLocaleString()} F <button class="btn-small-del" onclick="delTranspTemp(${idx})">X</button></span></li>`; });
+        ts.innerText = tot.toLocaleString();
     }
+    function delTranspTemp(idx) { transportTemp.splice(idx, 1); updateTransportTempUI(); }
 
-    function delTranspTemp(idx) {
-        transportTemp.splice(idx, 1);
-        updateTransportTempUI();
-    }
-
-    // --- 5. VALIDATION ET ENVOI ---
     function validerJournee() {
-        const date = document.getElementById('dateSaisie').value;
-        if(!date) return alert("Date manquante ! Veuillez choisir une date.");
-
-        // Calcul RH
-        const qrh = { 
-            mJ: Number(document.getElementById('qMJ').value), 
-            aJ: Number(document.getElementById('qAJ').value), 
-            mN: Number(document.getElementById('qMN').value), 
-            aN: Number(document.getElementById('qAN').value) 
-        };
+        const date = document.getElementById('dateSaisie').value; if(!date) return alert("Date manquante !");
+        const qrh = { mJ: Number(document.getElementById('qMJ').value), aJ: Number(document.getElementById('qAJ').value), mN: Number(document.getElementById('qMN').value), aN: Number(document.getElementById('qAN').value) };
         const rhCost = (qrh.mJ * globalRH.mJ) + (qrh.mN * globalRH.mN) + (qrh.aJ * globalRH.aJ) + (qrh.aN * globalRH.aN);
-        
-        // Calcul Transport
-        let tCost = 0; 
-        transportTemp.forEach(t => tCost += t.price);
-
-        const record = {
-            date: date,
-            rh: { q: qrh, cost: rhCost },
-            transport: { list: transportTemp, cost: tCost },
-            total: rhCost + tCost,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        db.collection("historique").doc(date).set(record)
-            .then(() => {
-                alert("✅ Données envoyées au Cloud avec succès !");
-                transportTemp = []; 
-                updateTransportTempUI();
-                document.getElementById('qMJ').value = 0; document.getElementById('qAJ').value = 0;
-                document.getElementById('qMN').value = 0; document.getElementById('qAN').value = 0;
-            })
-            .catch((err) => alert("Erreur lors de l'envoi : " + err));
+        let tCost = 0; transportTemp.forEach(t => tCost += t.price);
+        db.collection("historique").doc(date).set({ date: date, rh: { q: qrh, cost: rhCost }, transport: { list: transportTemp, cost: tCost }, total: rhCost + tCost, timestamp: firebase.firestore.FieldValue.serverTimestamp() }).then(() => {
+            alert("✅ Enregistré !"); transportTemp = []; updateTransportTempUI(); document.getElementById('qMJ').value = 0; document.getElementById('qAJ').value = 0; document.getElementById('qMN').value = 0; document.getElementById('qAN').value = 0;
+        });
     }
 
-    // --- 6. AFFICHAGE TABLEAU & DASHBOARD ANALYSE ---
     function afficherHistorique(snapshot) {
-        const tbody = document.getElementById('corpsTableau');
-        tbody.innerHTML = "";
-        
+        const tbody = document.getElementById('corpsTableau'); tbody.innerHTML = "";
         let s = { mj:0, mn:0, mc:0, aj:0, an:0, ac:0, nbT:0, tc:0, g:0 };
-        let weeklyProdHTML = "";
-        let daysCount = 0;
-
-        let docs = [];
-        snapshot.forEach(doc => docs.push(doc.data()));
+        let docs = []; snapshot.forEach(doc => docs.push(doc.data()));
         docs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+        // --- PREPARATION DES DONNEES POUR LE MOIS ET LE GRAPHIQUE ---
+        const currentMonth = new Date().toISOString().substring(0, 7); // Format "YYYY-MM"
+        let monthCamions = 0;
+        let monthEffectif = 0;
+        
+        // Tableaux pour la courbe (Graphique)
+        let chartLabels = [];
+        let chartData = [];
+        
+        // On isole les données de ce mois-ci et on les trie de la plus ancienne à la plus récente pour la courbe
+        let monthlyDocs = docs.filter(d => d.date.startsWith(currentMonth)).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+        monthlyDocs.forEach(d => {
+            let totalM = (d.rh.q.mJ || 0) + (d.rh.q.mN || 0);
+            let totalA = (d.rh.q.aJ || 0) + (d.rh.q.aN || 0);
+            let effDay = totalM + totalA;
+            let camDay = (d.transport && d.transport.list) ? d.transport.list.length : 0;
+            
+            monthEffectif += effDay;
+            monthCamions += camDay;
+            
+            let prodDay = effDay > 0 ? (camDay / effDay).toFixed(2) : 0;
+            
+            // On ajoute les points dans la courbe
+            chartLabels.push(d.date.substring(8, 10) + "/" + d.date.substring(5, 7)); // Format JJ/MM
+            chartData.push(prodDay);
+        });
+
+        // --- CREATION DE LA COURBE GRAPHIQUE ---
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        if(prodChart) { prodChart.destroy(); } // Efface l'ancienne courbe avant de la redessiner
+        
+        prodChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Productivité',
+                    data: chartData,
+                    borderColor: '#f68b1e', // Orange Jumia
+                    backgroundColor: 'rgba(246, 139, 30, 0.15)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#00b5e2', // Points bleus
+                    pointBorderColor: '#fff',
+                    pointRadius: 5,
+                    fill: true,
+                    tension: 0.3 // Courbe légèrement arrondie
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }, // Cache la légende pour faire épuré
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#eee' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // --- AFFICHAGE DU TABLEAU ---
         docs.forEach(d => {
             s.mj += (d.rh.q.mJ || 0); s.mn += (d.rh.q.mN || 0); s.mc += (d.rh.cost || 0);
             s.aj += (d.rh.q.aJ || 0); s.an += (d.rh.q.aN || 0);
-            
             let transportDetails = "";
             if (d.transport && d.transport.list) {
-                d.transport.list.forEach(t => {
-                    let v = t.vol ? t.vol : ""; 
-                    transportDetails += `<div style="border-bottom:1px solid #ccc; padding:3px 0;"><strong>${t.route}</strong> - ${t.prest} - <b>${t.mat}</b> <span style="background:#fff; border:1px solid #aaa; padding:0 3px; border-radius:3px; font-size:0.85em;">${v}</span></div>`;
-                });
-                s.nbT += d.transport.list.length; 
-                s.tc += d.transport.cost; 
+                d.transport.list.forEach(t => { transportDetails += `<div style="border-bottom:1px solid #ccc; padding:3px 0;"><strong>${t.route}</strong> - <b>${t.mat}</b> <span style="font-size:0.85em;">(${t.vol})</span></div>`; });
+                s.nbT += d.transport.list.length; s.tc += d.transport.cost; 
             }
             s.g += d.total;
 
-            // Calculs Journaliers
-            let totalManutDay = (d.rh.q.mJ || 0) + (d.rh.q.mN || 0);
-            let totalAgentDay = (d.rh.q.aJ || 0) + (d.rh.q.aN || 0);
-            let totalEffectifDay = totalManutDay + totalAgentDay;
-            let totalCamionsDay = (d.transport && d.transport.list) ? d.transport.list.length : 0;
-            let prodDay = totalEffectifDay > 0 ? (totalCamionsDay / totalEffectifDay).toFixed(2) : "0.00";
+            let totalEffDay = (d.rh.q.mJ || 0) + (d.rh.q.mN || 0) + (d.rh.q.aJ || 0) + (d.rh.q.aN || 0);
+            let totalCamDay = (d.transport && d.transport.list) ? d.transport.list.length : 0;
+            let pDay = totalEffDay > 0 ? (totalCamDay / totalEffDay).toFixed(2) : "0.00";
 
-            // Remplissage de la frise de la semaine (les 7 derniers jours)
-            if (daysCount < 7) {
-                weeklyProdHTML += `
-                    <div style="background:#fef9e7; border:1px solid #f8c471; border-radius:6px; padding:10px 20px; text-align:center; min-width: 100px; flex: 1;">
-                        <div style="font-size:0.85em; color:#d35400; font-weight:bold; margin-bottom:5px;">${d.date}</div>
-                        <div style="color:#b9770e; font-weight:bold; font-size:1.3em;">${prodDay}</div>
-                    </div>
-                `;
-                daysCount++;
-            }
-
-            // Ligne principale du tableau
             tbody.innerHTML += `<tr>
                 <td><strong>${d.date}</strong></td>
-                <td class="col-manut">${d.rh.q.mJ || 0}</td> <td class="col-manut">${d.rh.q.mN || 0}</td> <td class="col-manut">${d.rh.cost.toLocaleString()} FCFA</td>
-                <td class="col-agent">${d.rh.q.aJ || 0}</td> <td class="col-agent">${d.rh.q.aN || 0}</td> <td class="col-agent"><b>${d.rh.cost.toLocaleString()} FCFA</b></td>
-                <td class="col-truck">${transportDetails}</td> <td class="col-truck-cost">${d.transport.cost.toLocaleString()} FCFA</td>
-                <td class="total-cell">${d.total.toLocaleString()} FCFA</td>
+                <td class="col-manut">${d.rh.q.mJ || 0}</td> <td class="col-manut">${d.rh.q.mN || 0}</td> <td class="col-manut">${d.rh.cost.toLocaleString()} F</td>
+                <td class="col-agent">${d.rh.q.aJ || 0}</td> <td class="col-agent">${d.rh.q.aN || 0}</td> <td class="col-agent"><b>${d.rh.cost.toLocaleString()} F</b></td>
+                <td class="col-truck">${transportDetails}</td> <td class="col-truck-cost">${d.transport.cost.toLocaleString()} F</td>
+                <td class="total-cell">${d.total.toLocaleString()} F</td>
                 <td><button class="btn-small-del" onclick="delHist('${d.date}')">X</button></td>
             </tr>`;
 
-            // Bilan du jour MODIFIÉ (inclut la productivité du jour)
-            tbody.innerHTML += `<tr style="background-color: #fcfdfd; border-bottom: 3px solid #34495e;">
-                <td style="text-align: right; font-style: italic; color: #7f8c8d; font-size: 0.85em;">↳ Bilan jour</td>
-                <td colspan="3" style="text-align: center; color: #2c3e50; font-size: 0.9em;">Total Manut. : <b>${totalManutDay}</b></td>
-                <td colspan="3" style="text-align: center; color: #2c3e50; font-size: 0.9em;">Total Agents : <b>${totalAgentDay}</b></td>
-                <td colspan="2" style="text-align: center; color: #27ae60; font-size: 0.9em;">Camions terminés : <b>${totalCamionsDay}</b></td>
-                <td colspan="2" style="text-align: center; background-color: #fdfae3; color: #d35400; font-size: 0.9em;">
-                    <strong>Effectif Global : ${totalEffectifDay}</strong><br>
-                    <span style="color: #2980b9; font-weight: bold; font-size: 0.9em;">Productivité : ${prodDay}</span>
-                </td>
+            tbody.innerHTML += `<tr style="background-color: #fcfdfd; border-bottom: 3px solid #282828;">
+                <td style="text-align: right; color: #f68b1e; font-size: 0.85em;">↳ Bilan jour</td>
+                <td colspan="6" style="text-align: center; color: #282828; font-size: 0.9em;">Total Effectif : <b>${totalEffDay}</b></td>
+                <td colspan="2" style="text-align: center; color: #00b5e2; font-size: 0.9em;">Camions : <b>${totalCamDay}</b></td>
+                <td colspan="2" style="text-align: center; background-color: #282828; color: #f68b1e; font-size: 0.9em;">Prod : ${pDay}</td>
             </tr>`;
         });
 
-        // Mise à jour des totaux du tableau (Footer)
         document.getElementById('sMJ').innerText = s.mj; document.getElementById('sMN').innerText = s.mn;
         document.getElementById('sAJ').innerText = s.aj; document.getElementById('sAN').innerText = s.an; 
-        document.getElementById('sAC').innerText = s.mc.toLocaleString() + " FCFA";
-        document.getElementById('sNbT').innerText = s.nbT + " trajets";
-        document.getElementById('sTC').innerText = s.tc.toLocaleString() + " FCFA";
-        document.getElementById('grandTotal').innerText = s.g.toLocaleString() + " FCFA";
+        document.getElementById('sAC').innerText = s.mc.toLocaleString() + " F";
+        document.getElementById('sNbT').innerText = s.nbT;
+        document.getElementById('sTC').innerText = s.tc.toLocaleString() + " F";
+        document.getElementById('grandTotal').innerText = s.g.toLocaleString() + " F";
 
-        // ----- MISE À JOUR DU DASHBOARD D'ANALYSE -----
-        let effectifGlobalTotal = s.mj + s.mn + s.aj + s.an;
-        let camionsGlobalTotal = s.nbT;
-        let productiviteGlobale = effectifGlobalTotal > 0 ? (camionsGlobalTotal / effectifGlobalTotal).toFixed(2) : "0.00";
-
-        document.getElementById('dashTotalEffectif').innerText = effectifGlobalTotal;
-        document.getElementById('dashTotalCamions').innerText = camionsGlobalTotal;
-        document.getElementById('dashProductivite').innerHTML = productiviteGlobale + ` <span style="font-size:0.4em; color:#7f8c8d;">Camions / Agent</span>`;
-        
-        // Remplir la frise de la semaine
-        document.getElementById('weeklyProdBreakdown').innerHTML = weeklyProdHTML;
+        // Dashboard Stats
+        let globalEff = s.mj + s.mn + s.aj + s.an;
+        document.getElementById('dashTotalEffectif').innerText = globalEff;
+        document.getElementById('dashTotalCamions').innerText = s.nbT;
+        document.getElementById('dashProductivite').innerHTML = (globalEff > 0 ? (s.nbT / globalEff).toFixed(2) : "0.00") + ` <span style="font-size:0.4em; color:#aaa;">Camions/Agent</span>`;
+        document.getElementById('dashProdMois').innerHTML = (monthEffectif > 0 ? (monthCamions / monthEffectif).toFixed(2) : "0.00") + ` <span style="font-size:0.4em; color:#e6f7ff;">Camions/Agent</span>`;
     }
 
-    function delHist(dateId) {
-        if(confirm("⚠️ Voulez-vous supprimer définitivement la journée du " + dateId + " pour TOUS les utilisateurs ?")) {
-            db.collection("historique").doc(dateId).delete();
-        }
-    }
+    function delHist(dateId) { if(confirm("Supprimer " + dateId + " ?")) { db.collection("historique").doc(dateId).delete(); } }
 </script>
 </body>
 </html>
