@@ -10,7 +10,7 @@
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
         /* En-tête Jumia */
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f68b1e; padding-bottom: 10px; margin-bottom: 20px; }
@@ -26,17 +26,19 @@
         .card.highlight h3 { color: #282828; }
 
         /* Formulaire */
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; }
         .form-group { display: flex; flex-direction: column; }
         label { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
         button { background: #f68b1e; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; grid-column: 1 / -1; transition: 0.2s; }
         button:hover { background: #e07b19; }
 
         /* Tableau */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #f68b1e; color: white; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f68b1e; color: white; }
+        .badge-jour { background-color: #ffd9b3; color: #cc6600; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 12px;}
+        .badge-nuit { background-color: #b3d9ff; color: #004080; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 12px;}
         .btn-delete { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
     </style>
 </head>
@@ -50,7 +52,7 @@
 
     <div class="dashboard">
         <div class="card">
-            <h3>Effectif Staffé</h3>
+            <h3>Effectif Total</h3>
             <p id="dash-effectif">0</p>
         </div>
         <div class="card">
@@ -69,9 +71,16 @@
 
     <div class="form-grid">
         <div class="form-group"><label>Date</label><input type="date" id="dateInput"></div>
-        <div class="form-group"><label>Équipe / Zone</label><input type="text" id="equipeInput" placeholder="Ex: Équipe Matin"></div>
-        <div class="form-group"><label>Effectif</label><input type="number" id="effectifInput" placeholder="Nombre d'agents"></div>
-        <div class="form-group"><label>Nbr de Camions</label><input type="number" id="camionsInput" placeholder="Camions chargés/déchargés"></div>
+        <div class="form-group">
+            <label>Quart (Shift)</label>
+            <select id="shiftInput">
+                <option value="Jour">☀️ Jour</option>
+                <option value="Nuit">🌙 Nuit</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Agents</label><input type="number" id="agentsInput" placeholder="Nbr agents"></div>
+        <div class="form-group"><label>Manutentionnaires</label><input type="number" id="manutInput" placeholder="Nbr manut."></div>
+        <div class="form-group"><label>Nbr de Camions</label><input type="number" id="camionsInput" placeholder="Camions"></div>
         <div class="form-group"><label>Coût (FCFA)</label><input type="number" id="coutInput" placeholder="Coût total"></div>
         <button onclick="ajouterDonnee()">Enregistrer la donnée</button>
     </div>
@@ -80,8 +89,10 @@
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Équipe / Zone</th>
-                <th>Effectif</th>
+                <th>Shift</th>
+                <th>Agents</th>
+                <th>Manutentionnaires</th>
+                <th>Total Effectif</th>
                 <th>Camions</th>
                 <th>Coût</th>
                 <th>Action</th>
@@ -92,7 +103,7 @@
 </div>
 
 <script>
-       // --- 1. CONFIGURATION FIREBASE ---
+     // --- 1. CONFIGURATION FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzJGbel7mcMHr-sxalOIHagIWIlITHhZk",
       authDomain: "logistique-tms.firebaseapp.com",
@@ -112,23 +123,29 @@
     // Fonction pour ajouter
     function ajouterDonnee() {
         const date = document.getElementById('dateInput').value;
-        const equipe = document.getElementById('equipeInput').value;
-        const effectif = Number(document.getElementById('effectifInput').value);
-        const camions = Number(document.getElementById('camionsInput').value);
-        const cout = Number(document.getElementById('coutInput').value);
+        const shift = document.getElementById('shiftInput').value;
+        const agents = Number(document.getElementById('agentsInput').value) || 0;
+        const manutentionnaires = Number(document.getElementById('manutInput').value) || 0;
+        const camions = Number(document.getElementById('camionsInput').value) || 0;
+        const cout = Number(document.getElementById('coutInput').value) || 0;
 
-        if(!date || !equipe) return alert("Remplissez la date et l'équipe !");
+        // Calcul automatique de l'effectif total pour cette ligne
+        const effectifTotal = agents + manutentionnaires;
+
+        if(!date) return alert("Veuillez choisir une date !");
 
         db.collection("logistique").add({
             date: date,
-            equipe: equipe,
-            effectif: effectif,
+            shift: shift,
+            agents: agents,
+            manutentionnaires: manutentionnaires,
+            effectif: effectifTotal, // On sauvegarde le total
             camions: camions,
             cout: cout,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
-            document.getElementById('equipeInput').value = '';
-            document.getElementById('effectifInput').value = '';
+            document.getElementById('agentsInput').value = '';
+            document.getElementById('manutInput').value = '';
             document.getElementById('camionsInput').value = '';
             document.getElementById('coutInput').value = '';
         });
@@ -141,12 +158,12 @@
         }
     }
 
-    // Lecture en temps réel et calcul du Dashboard
+    // Lecture en temps réel et calcul
     db.collection("logistique").orderBy("date", "desc").onSnapshot((querySnapshot) => {
         const tableBody = document.getElementById('tableBody');
         tableBody.innerHTML = '';
         
-        let totalEffectif = 0;
+        let totalEffectifGlobal = 0;
         let totalCamions = 0;
         let totalCout = 0;
 
@@ -155,16 +172,21 @@
             const id = doc.id;
             
             // Calculs pour le Dashboard
-            totalEffectif += data.effectif || 0;
+            totalEffectifGlobal += data.effectif || 0;
             totalCamions += data.camions || 0;
             totalCout += data.cout || 0;
+
+            // Choix de la couleur pour Jour/Nuit
+            let badgeClass = data.shift === "Nuit" ? "badge-nuit" : "badge-jour";
 
             // Affichage dans le tableau
             tableBody.innerHTML += `
                 <tr>
                     <td>${data.date}</td>
-                    <td>${data.equipe}</td>
-                    <td>${data.effectif || 0}</td>
+                    <td><span class="${badgeClass}">${data.shift || "-"}</span></td>
+                    <td>${data.agents || 0}</td>
+                    <td>${data.manutentionnaires || 0}</td>
+                    <td><strong>${data.effectif || 0}</strong></td>
                     <td>${data.camions || 0}</td>
                     <td>${data.cout || 0} FCFA</td>
                     <td><button class="btn-delete" onclick="supprimerDonnee('${id}')">Supprimer</button></td>
@@ -172,15 +194,15 @@
             `;
         });
 
-        // Mise à jour de l'affichage du Dashboard
-        document.getElementById('dash-effectif').innerText = totalEffectif;
+        // Mise à jour du Dashboard
+        document.getElementById('dash-effectif').innerText = totalEffectifGlobal;
         document.getElementById('dash-camions').innerText = totalCamions;
         document.getElementById('dash-cout').innerText = totalCout + " FCFA";
         
-        // Calcul de la productivité (Camions divisé par Effectif)
+        // Calcul de la productivité globale
         let productivite = 0;
-        if(totalEffectif > 0) {
-            productivite = (totalCamions / totalEffectif).toFixed(2);
+        if(totalEffectifGlobal > 0) {
+            productivite = (totalCamions / totalEffectifGlobal).toFixed(2);
         }
         document.getElementById('dash-prod').innerText = productivite + " Camions/Agent";
     });
