@@ -2,108 +2,180 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMS Logistique - Jumia</title>
-    
+    <title>Manager Logistique - Cloud (Multi-Users)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; }
+        .container { max-width: 1500px; margin: auto; background: white; padding: 25px; border-radius: 8px; border-top: 6px solid #34495e; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { color: #34495e; margin: 0; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
+        label { font-size: 0.85em; font-weight: bold; display: block; margin-top: 10px; color: #7f8c8d; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.9em; }
+        .btn-settings { background: #34495e; color: white; }
+        .btn-add { background: #34495e; color: white; width: 100%; margin-top: 10px; } 
+        .btn-entry { background: #27ae60; color: white; width: 100%; margin-top: 20px; font-size: 1.1em; padding: 15px; }
+        .btn-entry:hover { background: #219150; }
+        .btn-save-rh { background: #7f8c8d; color: white; width: 100%; margin-top: 10px; }
+        .btn-small-del { background: #c0392b; color: white; font-size: 0.8em; padding: 2px 8px; margin-left: 10px; border-radius: 3px; cursor: pointer; }
+        #paramsSection { display: none; background: #ecf0f1; border-radius: 6px; padding: 20px; margin-bottom: 25px; border: 1px solid #bdc3c7; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; margin-top: 15px; }
+        .card { border: 1px solid #e0e0e0; padding: 20px; border-radius: 6px; background: #fff; }
+        .config-list { max-height: 150px; overflow-y: auto; margin-top: 10px; border: 1px solid #ecf0f1; padding: 5px; background: #fdfdfd; list-style-type: none; margin-left: 0; padding-left: 0; }
+        .config-list li { font-size: 0.85em; padding: 6px; border-bottom: 1px solid #ecf0f1; display: flex; justify-content: space-between; align-items: center; }
+        .prestataire-display { background: #e8f5e9; color: #27ae60; padding: 12px; margin-top: 8px; border-radius: 4px; font-weight: bold; font-size: 0.95em; text-align: center; border: 1px solid #a5d6a7; }
         
-        /* En-tête Jumia */
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f68b1e; padding-bottom: 10px; margin-bottom: 20px; }
-        .header h1 { margin: 0; color: #282828; font-size: 24px; }
-        .header span { background: #f68b1e; color: white; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
-
-        /* Tableau de bord (Dashboard) */
-        .dashboard { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 25px; }
-        .card { background: #282828; color: white; flex: 1; padding: 15px; border-radius: 6px; text-align: center; }
-        .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #f68b1e; text-transform: uppercase; }
-        .card p { margin: 0; font-size: 24px; font-weight: bold; }
-        .card.highlight { background: #f68b1e; color: white; }
-        .card.highlight h3 { color: #282828; }
-
-        /* Formulaire */
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; }
-        .form-group { display: flex; flex-direction: column; }
-        label { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
-        button { background: #f68b1e; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; grid-column: 1 / -1; transition: 0.2s; }
-        button:hover { background: #e07b19; }
-
-        /* Tableau */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #f68b1e; color: white; }
-        .badge-jour { background-color: #ffd9b3; color: #cc6600; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 12px;}
-        .badge-nuit { background-color: #b3d9ff; color: #004080; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 12px;}
-        .btn-delete { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 0.9em; }
+        th { background: #34495e; color: white; padding: 12px; border: 1px solid #2c3e50; text-transform: uppercase; }
+        td { border: 1px solid #ddd; padding: 10px; text-align: center; vertical-align: middle; }
+        .col-manut { background-color: #e3f2fd; color: #2c3e50; }
+        .col-agent { background-color: #bbdefb; color: #2c3e50; font-weight: 500; }
+        .col-truck { background-color: #e8f5e9; text-align: left; }
+        .col-truck-cost { background-color: #e8f5e9; font-weight: bold; }
+        .total-cell { font-weight: bold; color: #34495e; background: #ecf0f1; border-left: 2px solid #34495e; }
+        tfoot tr { background-color: #34495e; color: white; font-weight: bold; }
+        
+        /* Indicateur de connexion */
+        #statusIndicator { padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .status-online { background: #27ae60; color: white; }
+        .status-offline { background: #e74c3c; color: white; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h1>TMS Logistique - Suivi Quotidien</h1>
-        <span>JUMIA</span>
+    <div class="header-row">
+        <div>
+            <h2>📊 Suivi Logistique (Cloud)</h2>
+            <span id="statusIndicator" class="status-offline">Déconnecté</span>
+        </div>
+        <button class="btn btn-settings" onclick="toggleParams()">⚙️ Configurer Données</button>
     </div>
 
-    <div class="dashboard">
-        <div class="card">
-            <h3>Effectif Total</h3>
-            <p id="dash-effectif">0</p>
-        </div>
-        <div class="card">
-            <h3>Camions Traités</h3>
-            <p id="dash-camions">0</p>
-        </div>
-        <div class="card">
-            <h3>Coût Total</h3>
-            <p id="dash-cout">0</p>
-        </div>
-        <div class="card highlight">
-            <h3>Productivité (Camions/Agent)</h3>
-            <p id="dash-prod">0.00</p>
+    <div id="paramsSection">
+        <h3 style="margin-top:0;">🛠️ Configuration Partagée</h3>
+        <p style="font-size:0.9em; color:#e67e22;">⚠️ Attention : Les modifications ici impactent tous les utilisateurs.</p>
+        <div class="grid-3">
+            
+            <div class="card">
+                <h4>1. Tarifs RH</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div>
+                        <strong style="color:#3498db;">Jour</strong>
+                        <label>Manut. :</label> <input type="number" id="tMJ" value="3500">
+                        <label>Agent :</label> <input type="number" id="tAJ" value="7500">
+                    </div>
+                    <div>
+                        <strong style="color:#2980b9;">Nuit</strong>
+                        <label>Manut. :</label> <input type="number" id="tMN" value="5000">
+                        <label>Agent :</label> <input type="number" id="tAN" value="10000">
+                    </div>
+                </div>
+                <button class="btn btn-save-rh" onclick="sauvegarderRH()">💾 Mettre à jour Tarifs</button>
+            </div>
+
+            <div class="card">
+                <h4>2. Routes</h4>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="newRouteName" placeholder="Ville (ex: Bouaké)">
+                    <input type="number" id="newRoutePrice" placeholder="Prix" style="width:100px;">
+                </div>
+                <button class="btn btn-add" onclick="ajouterRoute()">+ Route</button>
+                <ul id="listeRoutesConfig" class="config-list"></ul>
+            </div>
+
+            <div class="card">
+                <h4>3. Base Camions</h4>
+                <label>Nouveau Camion :</label>
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <input type="text" id="newPlate" placeholder="Plaque (1234 AB 01)">
+                    <input type="text" id="newVolume" placeholder="Vol (45m3)" style="width:100px;">
+                </div>
+                <input type="text" id="newProvider" placeholder="Prestataire">
+                
+                <button class="btn btn-add" onclick="ajouterCamionBase()">+ Enregistrer Camion</button>
+                <ul id="listeFlotteConfig" class="config-list"></ul>
+            </div>
+
         </div>
     </div>
 
-    <div class="form-grid">
-        <div class="form-group"><label>Date</label><input type="date" id="dateInput"></div>
-        <div class="form-group">
-            <label>Quart (Shift)</label>
-            <select id="shiftInput">
-                <option value="Jour">☀️ Jour</option>
-                <option value="Nuit">🌙 Nuit</option>
-            </select>
+    <div class="card" style="border-left: 5px solid #27ae60; padding: 25px;">
+        <h3 style="color:#27ae60; margin-top:0;">📝 Saisie Journalière</h3>
+        <label style="font-size:1.1em;">Date de l'opération :</label>
+        <input type="date" id="dateSaisie" style="width: 200px; margin-bottom: 20px;">
+        
+        <div class="grid-3">
+            <div class="card" style="border-top: 4px solid #3498db;">
+                <h4 style="margin-top:0; color:#3498db;">🔵 Ressources Humaines</h4>
+                <strong>Shift JOUR</strong>
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="qMJ" placeholder="Manut." value="0"><input type="number" id="qAJ" placeholder="Agent" value="0">
+                </div>
+                <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
+                <strong>Shift NUIT</strong>
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="qMN" placeholder="Manut." value="0"><input type="number" id="qAN" placeholder="Agent" value="0">
+                </div>
+            </div>
+
+            <div class="card" style="background:#f9fff9; border:1px solid #27ae60; border-top: 4px solid #27ae60;">
+                <h4 style="margin-top:0; color:#27ae60;">🟢 Transport</h4>
+                <label>1. Destination :</label>
+                <select id="selectRoute" onchange="afficherPrixRoute()">
+                    <option value="">-- Chargement... --</option>
+                </select>
+                <div id="infoPrixRoute" style="text-align:right; font-size:0.9em; color:#27ae60; font-weight:bold; margin-bottom:10px;">Prix : 0 FCFA</div>
+
+                <label>2. Camion :</label>
+                <input type="text" id="inputMatricule" list="datalistMatricules" placeholder="Taper plaque..." oninput="rechercherInfosCamion()">
+                <datalist id="datalistMatricules"></datalist>
+
+                <div id="displayInfosCamion" class="prestataire-display">Prestataire : - | Volume : -</div>
+                
+                <button class="btn btn-add" style="background:#27ae60;" onclick="ajouterLigneTransport()">Ajouter ce trajet</button>
+
+                <ul id="listeCamionsJour" class="config-list" style="height:auto; min-height:50px;"></ul>
+                <div style="text-align:right; font-weight:bold; margin-top:5px; color:#27ae60;">Total Transport: <span id="totalTransportLive">0</span> FCFA</div>
+            </div>
         </div>
-        <div class="form-group"><label>Agents</label><input type="number" id="agentsInput" placeholder="Nbr agents"></div>
-        <div class="form-group"><label>Manutentionnaires</label><input type="number" id="manutInput" placeholder="Nbr manut."></div>
-        <div class="form-group"><label>Nbr de Camions</label><input type="number" id="camionsInput" placeholder="Camions"></div>
-        <div class="form-group"><label>Coût (FCFA)</label><input type="number" id="coutInput" placeholder="Coût total"></div>
-        <button onclick="ajouterDonnee()">Enregistrer la donnée</button>
+        <button class="btn btn-entry" onclick="validerJournee()">✅ Envoyer au Cloud</button>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Shift</th>
-                <th>Agents</th>
-                <th>Manutentionnaires</th>
-                <th>Total Effectif</th>
-                <th>Camions</th>
-                <th>Coût</th>
-                <th>Action</th>
+                <th rowspan="2">Date</th>
+                <th colspan="3" style="background:#2980b9;">Manutentionnaires</th>
+                <th colspan="3" style="background:#3498db;">Agents</th>
+                <th colspan="2" style="background:#27ae60;">Transport</th>
+                <th rowspan="2">Total Global</th>
+                <th rowspan="2">Action</th>
+            </tr>
+            <tr>
+                <th class="col-manut">J</th> <th class="col-manut">N</th> <th class="col-manut">Coût</th>
+                <th class="col-agent">J</th> <th class="col-agent">N</th> <th class="col-agent">Coût</th>
+                <th class="col-truck">Axe - Prest. - Plaque - Vol.</th> <th class="col-truck">Coût</th>
             </tr>
         </thead>
-        <tbody id="tableBody"></tbody>
+        <tbody id="corpsTableau"></tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td id="sMJ">-</td> <td id="sMN">-</td> <td id="sMC">-</td>
+                <td id="sAJ">-</td> <td id="sAN">-</td> <td id="sAC">-</td>
+                <td id="sNbT">-</td> <td id="sTC">-</td>
+                <td id="grandTotal" style="color:#2ecc71;">-</td>
+                <td></td>
+            </tr>
+        </tfoot>
     </table>
 </div>
 
 <script>
-     // --- 1. CONFIGURATION FIREBASE ---
+  // --- 1. CONFIGURATION FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzJGbel7mcMHr-sxalOIHagIWIlITHhZk",
       authDomain: "logistique-tms.firebaseapp.com",
@@ -113,100 +185,131 @@
       appId: "1:401352839856:web:639ea196aab034c926e175"
     };
 
-    // Initialisation
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    let db;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        document.getElementById('statusIndicator').innerText = "Connecté au Cloud";
+        document.getElementById('statusIndicator').className = "status-online";
+    } catch (e) {
+        console.error("Erreur Firebase:", e);
+        alert("Attention : Les clés Firebase ne sont pas configurées !");
+    }
 
-    // Mettre la date d'aujourd'hui par défaut
-    document.getElementById('dateInput').valueAsDate = new Date();
+    // --- VARIABLES GLOBALES ---
+    let transportTemp = []; 
+    let globalRoutes = [];
+    let globalFlotte = [];
+    let globalRH = {};
 
-    // Fonction pour ajouter
-    function ajouterDonnee() {
-        const date = document.getElementById('dateInput').value;
-        const shift = document.getElementById('shiftInput').value;
-        const agents = Number(document.getElementById('agentsInput').value) || 0;
-        const manutentionnaires = Number(document.getElementById('manutInput').value) || 0;
-        const camions = Number(document.getElementById('camionsInput').value) || 0;
-        const cout = Number(document.getElementById('coutInput').value) || 0;
+    // --- 2. CHARGEMENT TEMPS REEL ---
+    window.onload = function() {
+        if(!db) return;
 
-        // Calcul automatique de l'effectif total pour cette ligne
-        const effectifTotal = agents + manutentionnaires;
+        // Ecoute de la config (Tarifs, Routes, Flotte)
+        db.collection("config").doc("general").onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                globalRoutes = data.routes || [];
+                globalFlotte = data.flotte || [];
+                globalRH = data.rh || { mJ:3500, aJ:7500, mN:5000, aN:10000 };
+                updateUIConfig();
+            } else {
+                db.collection("config").doc("general").set({ routes:[], flotte:[], rh:{ mJ:3500, aJ:7500, mN:5000, aN:10000 } });
+            }
+        });
 
-        if(!date) return alert("Veuillez choisir une date !");
+        // Ecoute de l'historique
+        db.collection("historique").onSnapshot((querySnapshot) => {
+            afficherHistorique(querySnapshot);
+        });
+    };
 
-        db.collection("logistique").add({
-            date: date,
-            shift: shift,
-            agents: agents,
-            manutentionnaires: manutentionnaires,
-            effectif: effectifTotal, // On sauvegarde le total
-            camions: camions,
-            cout: cout,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    function updateUIConfig() {
+        document.getElementById('tMJ').value = globalRH.mJ; document.getElementById('tAJ').value = globalRH.aJ;
+        document.getElementById('tMN').value = globalRH.mN; document.getElementById('tAN').value = globalRH.aN;
+
+        const listRoutes = document.getElementById('listeRoutesConfig');
+        const selRoute = document.getElementById('selectRoute');
+        listRoutes.innerHTML = "";
+        selRoute.innerHTML = '<option value="">-- Choisir Route --</option>';
+        
+        globalRoutes.forEach((r, idx) => {
+            listRoutes.innerHTML += `<li>${r.name} (${r.price.toLocaleString()} FCFA) <button class="btn-small-del" onclick="delRoute(${idx})">X</button></li>`;
+            let opt = document.createElement('option');
+            opt.value = idx; opt.innerText = r.name; opt.dataset.price = r.price;
+            selRoute.appendChild(opt);
+        });
+
+        const listFlotte = document.getElementById('listeFlotteConfig');
+        const dl = document.getElementById('datalistMatricules');
+        listFlotte.innerHTML = "";
+        dl.innerHTML = "";
+
+        globalFlotte.forEach((c, idx) => {
+            listFlotte.innerHTML += `<li><b>${c.mat}</b> (${c.vol}) - ${c.prest} <button class="btn-small-del" onclick="delFlotte(${idx})">X</button></li>`;
+            let opt = document.createElement('option');
+            opt.value = c.mat;
+            dl.appendChild(opt);
+        });
+    }
+
+    // --- 3. SAUVEGARDE CONFIGURATION ---
+    function saveConfigToCloud() {
+        db.collection("config").doc("general").update({
+            routes: globalRoutes,
+            flotte: globalFlotte,
+            rh: globalRH
         }).then(() => {
-            document.getElementById('agentsInput').value = '';
-            document.getElementById('manutInput').value = '';
-            document.getElementById('camionsInput').value = '';
-            document.getElementById('coutInput').value = '';
-        });
+            console.log("Config synchronisée !");
+        }).catch((err) => alert("Erreur sauvegarde : " + err));
     }
 
-    // Fonction pour supprimer
-    function supprimerDonnee(id) {
-        if(confirm("Supprimer cette ligne ?")) {
-            db.collection("logistique").doc(id).delete();
+    function sauvegarderRH() {
+        globalRH = {
+            mJ: Number(document.getElementById('tMJ').value), aJ: Number(document.getElementById('tAJ').value),
+            mN: Number(document.getElementById('tMN').value), aN: Number(document.getElementById('tAN').value)
+        };
+        saveConfigToCloud();
+        alert("Tarifs RH mis à jour pour tout le monde !");
+    }
+
+    function ajouterRoute() {
+        const n = document.getElementById('newRouteName').value;
+        const p = document.getElementById('newRoutePrice').value;
+        if(!n || !p) return alert("Remplissez la route et le prix.");
+        globalRoutes.push({ name: n, price: Number(p) });
+        saveConfigToCloud();
+        document.getElementById('newRouteName').value = ""; document.getElementById('newRoutePrice').value = "";
+    }
+    
+    function delRoute(idx) {
+        if(confirm("Supprimer cette route ?")) {
+            globalRoutes.splice(idx, 1);
+            saveConfigToCloud();
         }
     }
 
-    // Lecture en temps réel et calcul
-    db.collection("logistique").orderBy("date", "desc").onSnapshot((querySnapshot) => {
-        const tableBody = document.getElementById('tableBody');
-        tableBody.innerHTML = '';
+    function ajouterCamionBase() {
+        const mat = document.getElementById('newPlate').value.toUpperCase();
+        const vol = document.getElementById('newVolume').value;
+        const prest = document.getElementById('newProvider').value;
+        if(!mat || !prest || !vol) return alert("Remplissez tous les champs du camion.");
         
-        let totalEffectifGlobal = 0;
-        let totalCamions = 0;
-        let totalCout = 0;
-
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            const id = doc.id;
-            
-            // Calculs pour le Dashboard
-            totalEffectifGlobal += data.effectif || 0;
-            totalCamions += data.camions || 0;
-            totalCout += data.cout || 0;
-
-            // Choix de la couleur pour Jour/Nuit
-            let badgeClass = data.shift === "Nuit" ? "badge-nuit" : "badge-jour";
-
-            // Affichage dans le tableau
-            tableBody.innerHTML += `
-                <tr>
-                    <td>${data.date}</td>
-                    <td><span class="${badgeClass}">${data.shift || "-"}</span></td>
-                    <td>${data.agents || 0}</td>
-                    <td>${data.manutentionnaires || 0}</td>
-                    <td><strong>${data.effectif || 0}</strong></td>
-                    <td>${data.camions || 0}</td>
-                    <td>${data.cout || 0} FCFA</td>
-                    <td><button class="btn-delete" onclick="supprimerDonnee('${id}')">Supprimer</button></td>
-                </tr>
-            `;
-        });
-
-        // Mise à jour du Dashboard
-        document.getElementById('dash-effectif').innerText = totalEffectifGlobal;
-        document.getElementById('dash-camions').innerText = totalCamions;
-        document.getElementById('dash-cout').innerText = totalCout + " FCFA";
+        if(globalFlotte.find(c => c.mat === mat)) return alert("Ce camion existe déjà !");
         
-        // Calcul de la productivité globale
-        let productivite = 0;
-        if(totalEffectifGlobal > 0) {
-            productivite = (totalCamions / totalEffectifGlobal).toFixed(2);
+        globalFlotte.push({ mat: mat, prest: prest, vol: vol });
+        saveConfigToCloud();
+        document.getElementById('newPlate').value=""; document.getElementById('newVolume').value=""; document.getElementById('newProvider').value="";
+    }
+
+    function delFlotte(idx) {
+        if(confirm("Supprimer ce camion de la base ?")) {
+            globalFlotte.splice(idx, 1);
+            saveConfigToCloud();
         }
-        document.getElementById('dash-prod').innerText = productivite + " Camions/Agent";
-    });
-</script>
+    }
 
-</body>
-</html>
+    function toggleParams() {
+        const x = document.getElementById("paramsSection");
+        x.style.display = (x.style.display
