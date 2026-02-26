@@ -42,9 +42,10 @@
         .status-online { background: #27ae60; color: white; }
         .status-offline { background: #e74c3c; color: white; }
 
-        /* NOUVEAU DESIGN JUMIA (Orange, Noir, Bleu Ciel) */
-        .dashboard-analyse { display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 6px solid #f68b1e; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-        .dash-row { display: flex; justify-content: space-around; width: 100%; gap: 15px; }
+        /* NOUVEAU DASHBOARD JUMIA ETENDU */
+        .dashboard-analyse { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 6px solid #f68b1e; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .dash-row { display: flex; justify-content: space-between; width: 100%; gap: 15px; margin-bottom: 15px; }
+        .dash-row:last-child { margin-bottom: 0; }
         .dash-item { flex: 1; text-align: center; padding: 15px; border-radius: 8px; background: #f9f9f9; border: 1px solid #eee; }
         .dash-item h4 { margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
         .dash-item p { margin: 0; font-size: 2.2em; font-weight: 900; color: #282828; }
@@ -75,7 +76,7 @@
             <h2>Suivi Logistique</h2>
             <span id="statusIndicator" class="status-offline">Déconnecté</span>
         </div>
-        <button class="btn btn-settings" onclick="toggleParams()"⚙️ Configurer Données</button>
+        <button class="btn btn-settings" onclick="toggleParams()">⚙️ Configurer Données</button>
     </div>
 
     <div id="paramsSection">
@@ -107,21 +108,36 @@
 
     <div class="dashboard-analyse">
         <div class="dash-row">
+            <div class="dash-item" style="border: 1px solid #f68b1e; background: #fffaf5;">
+                <h4 style="color:#e67e22;">Effectif (Journalier)</h4>
+                <p id="dashJourEff">0</p>
+            </div>
+            <div class="dash-item" style="border: 1px solid #f68b1e; background: #fffaf5;">
+                <h4 style="color:#e67e22;">Camions (Journalier)</h4>
+                <p id="dashJourCam">0</p>
+            </div>
+            <div class="dash-item dash-orange">
+                <h4>🔥 Productivité Journalière</h4>
+                <p id="dashJourProd">0.00 <span style="font-size:0.4em; color:#ffe6cc;">Camions/Agent</span></p>
+            </div>
+        </div>
+
+        <div class="dash-row">
             <div class="dash-item">
                 <h4>Effectif (Global)</h4>
-                <p id="dashTotalEffectif">0</p>
+                <p id="dashGlobalEff">0</p>
             </div>
             <div class="dash-item">
                 <h4>Camions (Global)</h4>
-                <p id="dashTotalCamions">0</p>
-            </div>
-            <div class="dash-item dash-black">
-                <h4>📈 Productivité Globale</h4>
-                <p id="dashProductivite">0.00 <span style="font-size:0.4em; color:#aaa;">Camions/Agent</span></p>
+                <p id="dashGlobalCam">0</p>
             </div>
             <div class="dash-item dash-blue">
                 <h4>🗓️ Productivité du Mois</h4>
                 <p id="dashProdMois">0.00 <span style="font-size:0.4em; color:#e6f7ff;">Camions/Agent</span></p>
+            </div>
+            <div class="dash-item dash-black">
+                <h4>📈 Productivité Globale</h4>
+                <p id="dashProductivite">0.00 <span style="font-size:0.4em; color:#aaa;">Camions/Agent</span></p>
             </div>
         </div>
     </div>
@@ -206,7 +222,7 @@
 </div>
 
 <script>
-   // --- 1. CONFIGURATION FIREBASE ---
+     // --- 1. CONFIGURATION FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzJGbel7mcMHr-sxalOIHagIWIlITHhZk",
       authDomain: "logistique-tms.firebaseapp.com",
@@ -311,16 +327,13 @@
         let docs = []; snapshot.forEach(doc => docs.push(doc.data()));
         docs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // --- PREPARATION DES DONNEES POUR LE MOIS ET LE GRAPHIQUE ---
+        // --- PREPARATION DES DONNEES ---
         const currentMonth = new Date().toISOString().substring(0, 7); // Format "YYYY-MM"
         let monthCamions = 0;
         let monthEffectif = 0;
         
-        // Tableaux pour la courbe (Graphique)
         let chartLabels = [];
         let chartData = [];
-        
-        // On isole les données de ce mois-ci et on les trie de la plus ancienne à la plus récente pour la courbe
         let monthlyDocs = docs.filter(d => d.date.startsWith(currentMonth)).sort((a,b) => new Date(a.date) - new Date(b.date));
 
         monthlyDocs.forEach(d => {
@@ -333,15 +346,13 @@
             monthCamions += camDay;
             
             let prodDay = effDay > 0 ? (camDay / effDay).toFixed(2) : 0;
-            
-            // On ajoute les points dans la courbe
             chartLabels.push(d.date.substring(8, 10) + "/" + d.date.substring(5, 7)); // Format JJ/MM
             chartData.push(prodDay);
         });
 
-        // --- CREATION DE LA COURBE GRAPHIQUE ---
+        // --- COURBE GRAPHIQUE ---
         const ctx = document.getElementById('monthlyChart').getContext('2d');
-        if(prodChart) { prodChart.destroy(); } // Efface l'ancienne courbe avant de la redessiner
+        if(prodChart) { prodChart.destroy(); } 
         
         prodChart = new Chart(ctx, {
             type: 'line',
@@ -350,20 +361,20 @@
                 datasets: [{
                     label: 'Productivité',
                     data: chartData,
-                    borderColor: '#f68b1e', // Orange Jumia
+                    borderColor: '#f68b1e', 
                     backgroundColor: 'rgba(246, 139, 30, 0.15)',
                     borderWidth: 3,
-                    pointBackgroundColor: '#00b5e2', // Points bleus
+                    pointBackgroundColor: '#00b5e2', 
                     pointBorderColor: '#fff',
                     pointRadius: 5,
                     fill: true,
-                    tension: 0.3 // Courbe légèrement arrondie
+                    tension: 0.3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } }, // Cache la légende pour faire épuré
+                plugins: { legend: { display: false } }, 
                 scales: { 
                     y: { beginAtZero: true, grid: { color: '#eee' } },
                     x: { grid: { display: false } }
@@ -403,6 +414,7 @@
             </tr>`;
         });
 
+        // Totaux Footer Tableau
         document.getElementById('sMJ').innerText = s.mj; document.getElementById('sMN').innerText = s.mn;
         document.getElementById('sAJ').innerText = s.aj; document.getElementById('sAN').innerText = s.an; 
         document.getElementById('sAC').innerText = s.mc.toLocaleString() + " F";
@@ -410,12 +422,31 @@
         document.getElementById('sTC').innerText = s.tc.toLocaleString() + " F";
         document.getElementById('grandTotal').innerText = s.g.toLocaleString() + " F";
 
-        // Dashboard Stats
+        // ----- CALCUL DES VARIABLES DU DASHBOARD HAUT -----
         let globalEff = s.mj + s.mn + s.aj + s.an;
-        document.getElementById('dashTotalEffectif').innerText = globalEff;
-        document.getElementById('dashTotalCamions').innerText = s.nbT;
-        document.getElementById('dashProductivite').innerHTML = (globalEff > 0 ? (s.nbT / globalEff).toFixed(2) : "0.00") + ` <span style="font-size:0.4em; color:#aaa;">Camions/Agent</span>`;
+        
+        let jourEff = 0;
+        let jourCam = 0;
+        let jourProd = "0.00";
+
+        // Si on a des données, on prend la ligne la plus récente pour les stats "Journalier"
+        if (docs.length > 0) {
+            let lastDay = docs[0];
+            jourEff = (lastDay.rh.q.mJ || 0) + (lastDay.rh.q.mN || 0) + (lastDay.rh.q.aJ || 0) + (lastDay.rh.q.aN || 0);
+            jourCam = (lastDay.transport && lastDay.transport.list) ? lastDay.transport.list.length : 0;
+            jourProd = jourEff > 0 ? (jourCam / jourEff).toFixed(2) : "0.00";
+        }
+
+        // Ligne 1 : Journalier
+        document.getElementById('dashJourEff').innerText = jourEff;
+        document.getElementById('dashJourCam').innerText = jourCam;
+        document.getElementById('dashJourProd').innerHTML = jourProd + ` <span style="font-size:0.4em; color:#ffe6cc;">Camions/Agent</span>`;
+
+        // Ligne 2 : Global & Mois
+        document.getElementById('dashGlobalEff').innerText = globalEff;
+        document.getElementById('dashGlobalCam').innerText = s.nbT;
         document.getElementById('dashProdMois').innerHTML = (monthEffectif > 0 ? (monthCamions / monthEffectif).toFixed(2) : "0.00") + ` <span style="font-size:0.4em; color:#e6f7ff;">Camions/Agent</span>`;
+        document.getElementById('dashProductivite').innerHTML = (globalEff > 0 ? (s.nbT / globalEff).toFixed(2) : "0.00") + ` <span style="font-size:0.4em; color:#aaa;">Camions/Agent</span>`;
     }
 
     function delHist(dateId) { if(confirm("Supprimer " + dateId + " ?")) { db.collection("historique").doc(dateId).delete(); } }
