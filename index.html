@@ -41,6 +41,13 @@
         #statusIndicator { padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
         .status-online { background: #27ae60; color: white; }
         .status-offline { background: #e74c3c; color: white; }
+
+        /* Dashboard Analyse Modifié (Flex Column) */
+        .dashboard-analyse { display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 6px solid #f39c12; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .dash-item { text-align: center; }
+        .dash-item h4 { margin: 0 0 8px 0; color: #7f8c8d; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
+        .dash-item p { margin: 0; font-size: 2em; font-weight: bold; color: #2c3e50; }
+        .dash-item.highlight p { color: #f39c12; }
     </style>
 </head>
 <body>
@@ -99,6 +106,29 @@
                 <ul id="listeFlotteConfig" class="config-list"></ul>
             </div>
 
+        </div>
+    </div>
+
+    <div class="dashboard-analyse">
+        <div style="display: flex; justify-content: space-around; width: 100%;">
+            <div class="dash-item">
+                <h4>Effectif Staffé (Global)</h4>
+                <p id="dashTotalEffectif">0</p>
+            </div>
+            <div class="dash-item">
+                <h4>Camions Traités (Global)</h4>
+                <p id="dashTotalCamions">0</p>
+            </div>
+            <div class="dash-item highlight">
+                <h4>📈 Productivité Globale</h4>
+                <p id="dashProductivite">0.00 <span style="font-size:0.4em; color:#7f8c8d;">Camions / Agent</span></p>
+            </div>
+        </div>
+
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #e0e0e0;">
+            <h4 style="margin: 0 0 10px 0; color: #7f8c8d; font-size: 0.85em; text-transform: uppercase;">Évolution de la Productivité (7 Derniers Jours)</h4>
+            <div id="weeklyProdBreakdown" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 5px;">
+                </div>
         </div>
     </div>
 
@@ -175,7 +205,7 @@
 </div>
 
 <script>
-  // --- 1. CONFIGURATION FIREBASE ---
+    // --- 1. CONFIGURATION FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzJGbel7mcMHr-sxalOIHagIWIlITHhZk",
       authDomain: "logistique-tms.firebaseapp.com",
@@ -312,4 +342,204 @@
 
     function toggleParams() {
         const x = document.getElementById("paramsSection");
-        x.style.display = (x.style.display
+        x.style.display = (x.style.display === "none") ? "block" : "none";
+    }
+
+    // --- 4. GESTION DU TRANSPORT JOURNALIER ---
+    function afficherPrixRoute() {
+        const sel = document.getElementById('selectRoute');
+        if(sel.selectedIndex <= 0) {
+            document.getElementById('infoPrixRoute').innerText = `Prix : 0 FCFA`;
+            return;
+        }
+        const p = sel.options[sel.selectedIndex].dataset.price;
+        document.getElementById('infoPrixRoute').innerText = `Prix : ${Number(p).toLocaleString()} FCFA`;
+    }
+
+    function rechercherInfosCamion() {
+        const input = document.getElementById('inputMatricule').value.toUpperCase();
+        const display = document.getElementById('displayInfosCamion');
+        const camion = globalFlotte.find(c => c.mat === input);
+        if(camion) {
+            display.innerText = `${camion.prest} | Vol: ${camion.vol}`;
+            display.style.backgroundColor = "#c8e6c9"; display.style.color = "#2e7d32";
+        } else {
+            display.innerText = "Inconnu (Saisie manuelle)";
+            display.style.backgroundColor = "#fff9c4"; display.style.color = "#f57f17";
+        }
+    }
+
+    function ajouterLigneTransport() {
+        const sel = document.getElementById('selectRoute');
+        if(sel.value === "") return alert("Choisis d'abord une route !");
+        
+        const routeName = sel.options[sel.selectedIndex].innerText;
+        const price = Number(sel.options[sel.selectedIndex].dataset.price);
+        const mat = document.getElementById('inputMatricule').value.toUpperCase();
+        
+        if(!mat) return alert("Renseignez la plaque d'immatriculation du camion.");
+
+        let found = globalFlotte.find(c => c.mat === mat);
+        let prest = found ? found.prest : "Non enregistré";
+        let vol = found ? found.vol : "?";
+
+        transportTemp.push({ route: routeName, price: price, mat: mat, prest: prest, vol: vol });
+        updateTransportTempUI();
+        
+        document.getElementById('inputMatricule').value = "";
+        document.getElementById('displayInfosCamion').innerText = "Prestataire : - | Volume : -";
+        document.getElementById('displayInfosCamion').style.backgroundColor = "#e8f5e9";
+    }
+
+    function updateTransportTempUI() {
+        const ul = document.getElementById('listeCamionsJour');
+        const totalSpan = document.getElementById('totalTransportLive');
+        ul.innerHTML = "";
+        let tot = 0;
+        transportTemp.forEach((t, idx) => {
+            tot += t.price;
+            ul.innerHTML += `<li><span style="font-size:0.9em"><b>${t.route}</b> - ${t.mat} <br><i style="color:#666">${t.prest} (${t.vol})</i></span><span>${t.price.toLocaleString()} FCFA <button class="btn-small-del" onclick="delTranspTemp(${idx})">X</button></span></li>`;
+        });
+        totalSpan.innerText = tot.toLocaleString();
+    }
+
+    function delTranspTemp(idx) {
+        transportTemp.splice(idx, 1);
+        updateTransportTempUI();
+    }
+
+    // --- 5. VALIDATION ET ENVOI ---
+    function validerJournee() {
+        const date = document.getElementById('dateSaisie').value;
+        if(!date) return alert("Date manquante ! Veuillez choisir une date.");
+
+        // Calcul RH
+        const qrh = { 
+            mJ: Number(document.getElementById('qMJ').value), 
+            aJ: Number(document.getElementById('qAJ').value), 
+            mN: Number(document.getElementById('qMN').value), 
+            aN: Number(document.getElementById('qAN').value) 
+        };
+        const rhCost = (qrh.mJ * globalRH.mJ) + (qrh.mN * globalRH.mN) + (qrh.aJ * globalRH.aJ) + (qrh.aN * globalRH.aN);
+        
+        // Calcul Transport
+        let tCost = 0; 
+        transportTemp.forEach(t => tCost += t.price);
+
+        const record = {
+            date: date,
+            rh: { q: qrh, cost: rhCost },
+            transport: { list: transportTemp, cost: tCost },
+            total: rhCost + tCost,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        db.collection("historique").doc(date).set(record)
+            .then(() => {
+                alert("✅ Données envoyées au Cloud avec succès !");
+                transportTemp = []; 
+                updateTransportTempUI();
+                document.getElementById('qMJ').value = 0; document.getElementById('qAJ').value = 0;
+                document.getElementById('qMN').value = 0; document.getElementById('qAN').value = 0;
+            })
+            .catch((err) => alert("Erreur lors de l'envoi : " + err));
+    }
+
+    // --- 6. AFFICHAGE TABLEAU & DASHBOARD ANALYSE ---
+    function afficherHistorique(snapshot) {
+        const tbody = document.getElementById('corpsTableau');
+        tbody.innerHTML = "";
+        
+        let s = { mj:0, mn:0, mc:0, aj:0, an:0, ac:0, nbT:0, tc:0, g:0 };
+        let weeklyProdHTML = "";
+        let daysCount = 0;
+
+        let docs = [];
+        snapshot.forEach(doc => docs.push(doc.data()));
+        docs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        docs.forEach(d => {
+            s.mj += (d.rh.q.mJ || 0); s.mn += (d.rh.q.mN || 0); s.mc += (d.rh.cost || 0);
+            s.aj += (d.rh.q.aJ || 0); s.an += (d.rh.q.aN || 0);
+            
+            let transportDetails = "";
+            if (d.transport && d.transport.list) {
+                d.transport.list.forEach(t => {
+                    let v = t.vol ? t.vol : ""; 
+                    transportDetails += `<div style="border-bottom:1px solid #ccc; padding:3px 0;"><strong>${t.route}</strong> - ${t.prest} - <b>${t.mat}</b> <span style="background:#fff; border:1px solid #aaa; padding:0 3px; border-radius:3px; font-size:0.85em;">${v}</span></div>`;
+                });
+                s.nbT += d.transport.list.length; 
+                s.tc += d.transport.cost; 
+            }
+            s.g += d.total;
+
+            // Calculs Journaliers
+            let totalManutDay = (d.rh.q.mJ || 0) + (d.rh.q.mN || 0);
+            let totalAgentDay = (d.rh.q.aJ || 0) + (d.rh.q.aN || 0);
+            let totalEffectifDay = totalManutDay + totalAgentDay;
+            let totalCamionsDay = (d.transport && d.transport.list) ? d.transport.list.length : 0;
+            let prodDay = totalEffectifDay > 0 ? (totalCamionsDay / totalEffectifDay).toFixed(2) : "0.00";
+
+            // Remplissage de la frise de la semaine (les 7 derniers jours)
+            if (daysCount < 7) {
+                weeklyProdHTML += `
+                    <div style="background:#fef9e7; border:1px solid #f8c471; border-radius:6px; padding:10px 20px; text-align:center; min-width: 100px; flex: 1;">
+                        <div style="font-size:0.85em; color:#d35400; font-weight:bold; margin-bottom:5px;">${d.date}</div>
+                        <div style="color:#b9770e; font-weight:bold; font-size:1.3em;">${prodDay}</div>
+                    </div>
+                `;
+                daysCount++;
+            }
+
+            // Ligne principale du tableau
+            tbody.innerHTML += `<tr>
+                <td><strong>${d.date}</strong></td>
+                <td class="col-manut">${d.rh.q.mJ || 0}</td> <td class="col-manut">${d.rh.q.mN || 0}</td> <td class="col-manut">${d.rh.cost.toLocaleString()} FCFA</td>
+                <td class="col-agent">${d.rh.q.aJ || 0}</td> <td class="col-agent">${d.rh.q.aN || 0}</td> <td class="col-agent"><b>${d.rh.cost.toLocaleString()} FCFA</b></td>
+                <td class="col-truck">${transportDetails}</td> <td class="col-truck-cost">${d.transport.cost.toLocaleString()} FCFA</td>
+                <td class="total-cell">${d.total.toLocaleString()} FCFA</td>
+                <td><button class="btn-small-del" onclick="delHist('${d.date}')">X</button></td>
+            </tr>`;
+
+            // Bilan du jour MODIFIÉ (inclut la productivité du jour)
+            tbody.innerHTML += `<tr style="background-color: #fcfdfd; border-bottom: 3px solid #34495e;">
+                <td style="text-align: right; font-style: italic; color: #7f8c8d; font-size: 0.85em;">↳ Bilan jour</td>
+                <td colspan="3" style="text-align: center; color: #2c3e50; font-size: 0.9em;">Total Manut. : <b>${totalManutDay}</b></td>
+                <td colspan="3" style="text-align: center; color: #2c3e50; font-size: 0.9em;">Total Agents : <b>${totalAgentDay}</b></td>
+                <td colspan="2" style="text-align: center; color: #27ae60; font-size: 0.9em;">Camions terminés : <b>${totalCamionsDay}</b></td>
+                <td colspan="2" style="text-align: center; background-color: #fdfae3; color: #d35400; font-size: 0.9em;">
+                    <strong>Effectif Global : ${totalEffectifDay}</strong><br>
+                    <span style="color: #2980b9; font-weight: bold; font-size: 0.9em;">Productivité : ${prodDay}</span>
+                </td>
+            </tr>`;
+        });
+
+        // Mise à jour des totaux du tableau (Footer)
+        document.getElementById('sMJ').innerText = s.mj; document.getElementById('sMN').innerText = s.mn;
+        document.getElementById('sAJ').innerText = s.aj; document.getElementById('sAN').innerText = s.an; 
+        document.getElementById('sAC').innerText = s.mc.toLocaleString() + " FCFA";
+        document.getElementById('sNbT').innerText = s.nbT + " trajets";
+        document.getElementById('sTC').innerText = s.tc.toLocaleString() + " FCFA";
+        document.getElementById('grandTotal').innerText = s.g.toLocaleString() + " FCFA";
+
+        // ----- MISE À JOUR DU DASHBOARD D'ANALYSE -----
+        let effectifGlobalTotal = s.mj + s.mn + s.aj + s.an;
+        let camionsGlobalTotal = s.nbT;
+        let productiviteGlobale = effectifGlobalTotal > 0 ? (camionsGlobalTotal / effectifGlobalTotal).toFixed(2) : "0.00";
+
+        document.getElementById('dashTotalEffectif').innerText = effectifGlobalTotal;
+        document.getElementById('dashTotalCamions').innerText = camionsGlobalTotal;
+        document.getElementById('dashProductivite').innerHTML = productiviteGlobale + ` <span style="font-size:0.4em; color:#7f8c8d;">Camions / Agent</span>`;
+        
+        // Remplir la frise de la semaine
+        document.getElementById('weeklyProdBreakdown').innerHTML = weeklyProdHTML;
+    }
+
+    function delHist(dateId) {
+        if(confirm("⚠️ Voulez-vous supprimer définitivement la journée du " + dateId + " pour TOUS les utilisateurs ?")) {
+            db.collection("historique").doc(dateId).delete();
+        }
+    }
+</script>
+</body>
+</html>
