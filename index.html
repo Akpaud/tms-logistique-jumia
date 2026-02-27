@@ -6,6 +6,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; margin: 0; }
@@ -28,7 +29,7 @@
         .config-list li { font-size: 0.85em; padding: 6px; border-bottom: 1px solid #ecf0f1; display: flex; justify-content: space-between; align-items: center; }
         .prestataire-display { background: #e8f5e9; color: #27ae60; padding: 12px; margin-top: 8px; border-radius: 4px; font-weight: bold; font-size: 0.95em; text-align: center; border: 1px solid #a5d6a7; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 0.9em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
         th { background: #282828; color: white; padding: 12px; border: 1px solid #444; text-transform: uppercase; }
         td { border: 1px solid #ddd; padding: 10px; text-align: center; vertical-align: middle; }
         .col-manut { background-color: #fcf3e8; color: #282828; }
@@ -42,7 +43,7 @@
         .status-online { background: #27ae60; color: white; }
         .status-offline { background: #e74c3c; color: white; }
 
-        /* NOUVEAU DASHBOARD JUMIA ETENDU */
+        /* DASHBOARD JUMIA ETENDU */
         .dashboard-analyse { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 6px solid #f68b1e; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
         .dash-row { display: flex; justify-content: space-between; width: 100%; gap: 15px; margin-bottom: 15px; }
         .dash-row:last-child { margin-bottom: 0; }
@@ -62,7 +63,6 @@
         .dash-orange h4 { color: #ffe6cc; }
         .dash-orange p { color: #fff; }
 
-        /* Footer Jumia */
         footer { text-align: center; padding: 30px; margin-top: 40px; background: #fff; border-top: 3px solid #eee; border-radius: 0 0 8px 8px;}
         footer img { height: 50px; margin-bottom: 10px; }
     </style>
@@ -186,7 +186,12 @@
         <button class="btn btn-entry" onclick="validerJournee()">✅ Enregistrer la Journée</button>
     </div>
 
-    <table>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px;">
+        <h3 style="color:#282828; margin:0;">📋 Historique des Opérations</h3>
+        <button class="btn" style="background: #27ae60; color: white; padding: 12px 20px;" onclick="exporterExcel()">📥 Exporter en Excel</button>
+    </div>
+
+    <table id="tableHistorique">
         <thead>
             <tr>
                 <th rowspan="2">Date</th>
@@ -222,7 +227,7 @@
 </div>
 
 <script>
-     // --- 1. CONFIGURATION FIREBASE ---
+   // --- 1. CONFIGURATION FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCzJGbel7mcMHr-sxalOIHagIWIlITHhZk",
       authDomain: "logistique-tms.firebaseapp.com",
@@ -233,7 +238,7 @@
     };
 
     let db;
-    let prodChart = null; // Variable pour stocker la courbe graphique
+    let prodChart = null;
 
     try {
         firebase.initializeApp(firebaseConfig);
@@ -321,14 +326,20 @@
         });
     }
 
+    // --- NOUVELLE FONCTION : EXPORT EXCEL ---
+    function exporterExcel() {
+        let table = document.getElementById("tableHistorique");
+        let wb = XLSX.utils.table_to_book(table, {sheet: "Bilan Logistique"});
+        XLSX.writeFile(wb, "Rapport_Logistique_Jumia.xlsx");
+    }
+
     function afficherHistorique(snapshot) {
         const tbody = document.getElementById('corpsTableau'); tbody.innerHTML = "";
         let s = { mj:0, mn:0, mc:0, aj:0, an:0, ac:0, nbT:0, tc:0, g:0 };
         let docs = []; snapshot.forEach(doc => docs.push(doc.data()));
         docs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // --- PREPARATION DES DONNEES ---
-        const currentMonth = new Date().toISOString().substring(0, 7); // Format "YYYY-MM"
+        const currentMonth = new Date().toISOString().substring(0, 7); 
         let monthCamions = 0;
         let monthEffectif = 0;
         
@@ -346,11 +357,10 @@
             monthCamions += camDay;
             
             let prodDay = effDay > 0 ? (camDay / effDay).toFixed(2) : 0;
-            chartLabels.push(d.date.substring(8, 10) + "/" + d.date.substring(5, 7)); // Format JJ/MM
+            chartLabels.push(d.date.substring(8, 10) + "/" + d.date.substring(5, 7)); 
             chartData.push(prodDay);
         });
 
-        // --- COURBE GRAPHIQUE ---
         const ctx = document.getElementById('monthlyChart').getContext('2d');
         if(prodChart) { prodChart.destroy(); } 
         
@@ -382,13 +392,12 @@
             }
         });
 
-        // --- AFFICHAGE DU TABLEAU ---
         docs.forEach(d => {
             s.mj += (d.rh.q.mJ || 0); s.mn += (d.rh.q.mN || 0); s.mc += (d.rh.cost || 0);
             s.aj += (d.rh.q.aJ || 0); s.an += (d.rh.q.aN || 0);
             let transportDetails = "";
             if (d.transport && d.transport.list) {
-                d.transport.list.forEach(t => { transportDetails += `<div style="border-bottom:1px solid #ccc; padding:3px 0;"><strong>${t.route}</strong> - <b>${t.mat}</b> <span style="font-size:0.85em;">(${t.vol})</span></div>`; });
+                d.transport.list.forEach(t => { transportDetails += `<div>${t.route} - ${t.mat} (${t.vol})</div>`; });
                 s.nbT += d.transport.list.length; s.tc += d.transport.cost; 
             }
             s.g += d.total;
@@ -414,7 +423,6 @@
             </tr>`;
         });
 
-        // Totaux Footer Tableau
         document.getElementById('sMJ').innerText = s.mj; document.getElementById('sMN').innerText = s.mn;
         document.getElementById('sAJ').innerText = s.aj; document.getElementById('sAN').innerText = s.an; 
         document.getElementById('sAC').innerText = s.mc.toLocaleString() + " F";
@@ -422,14 +430,9 @@
         document.getElementById('sTC').innerText = s.tc.toLocaleString() + " F";
         document.getElementById('grandTotal').innerText = s.g.toLocaleString() + " F";
 
-        // ----- CALCUL DES VARIABLES DU DASHBOARD HAUT -----
         let globalEff = s.mj + s.mn + s.aj + s.an;
-        
-        let jourEff = 0;
-        let jourCam = 0;
-        let jourProd = "0.00";
+        let jourEff = 0; let jourCam = 0; let jourProd = "0.00";
 
-        // Si on a des données, on prend la ligne la plus récente pour les stats "Journalier"
         if (docs.length > 0) {
             let lastDay = docs[0];
             jourEff = (lastDay.rh.q.mJ || 0) + (lastDay.rh.q.mN || 0) + (lastDay.rh.q.aJ || 0) + (lastDay.rh.q.aN || 0);
@@ -437,12 +440,10 @@
             jourProd = jourEff > 0 ? (jourCam / jourEff).toFixed(2) : "0.00";
         }
 
-        // Ligne 1 : Journalier
         document.getElementById('dashJourEff').innerText = jourEff;
         document.getElementById('dashJourCam').innerText = jourCam;
         document.getElementById('dashJourProd').innerHTML = jourProd + ` <span style="font-size:0.4em; color:#ffe6cc;">Camions/Agent</span>`;
 
-        // Ligne 2 : Global & Mois
         document.getElementById('dashGlobalEff').innerText = globalEff;
         document.getElementById('dashGlobalCam').innerText = s.nbT;
         document.getElementById('dashProdMois').innerHTML = (monthEffectif > 0 ? (monthCamions / monthEffectif).toFixed(2) : "0.00") + ` <span style="font-size:0.4em; color:#e6f7ff;">Camions/Agent</span>`;
